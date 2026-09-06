@@ -38,6 +38,36 @@ def get_latest_tailored_resume(
         db=db, job_id=job_id, document_type="tailored_resume"
     )
 
+@router.post("/jobs/{job_id}/cover-letter", response_model=GeneratedDocumentResponse, status_code=status.HTTP_201_CREATED)
+async def generate_cover_letter(
+    job_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate an authentic, customized cover letter for a specific job application.
+    Grounded in candidate's verified achievements and aligned with employer's technology stack.
+    """
+    try:
+        return await DocumentService.generate_cover_letter(db=db, job_id=job_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate cover letter: {str(e)}"
+        )
+
+@router.get("/jobs/{job_id}/cover-letter", response_model=Optional[GeneratedDocumentResponse])
+def get_latest_cover_letter(
+    job_id: str,
+    db: Session = Depends(get_db)
+):
+    """Retrieve the most recent cover letter generated for a job."""
+    return DocumentService.get_latest_job_document(
+        db=db, job_id=job_id, document_type="cover_letter"
+    )
+
+
 @router.get("/documents/{document_id}", response_model=GeneratedDocumentResponse)
 def get_document(document_id: str, db: Session = Depends(get_db)):
     """Retrieve details and markdown content for a generated document."""
