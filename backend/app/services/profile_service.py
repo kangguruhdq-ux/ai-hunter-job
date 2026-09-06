@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any, List, Dict
 from sqlalchemy.orm import Session
 from app.core.logging import logger
 from app.models.resume import Resume
@@ -61,6 +61,7 @@ class ProfileService:
                 profile.tools = profile_data.tools
                 profile.experience = [exp.model_dump() for exp in profile_data.experience]
                 profile.education = [edu.model_dump() for edu in profile_data.education]
+                profile.organizations = [org.model_dump() for org in profile_data.organizations]
                 profile.certifications = profile_data.certifications
                 profile.projects = [proj.model_dump() for proj in profile_data.projects]
                 profile.years_of_experience = profile_data.years_of_experience
@@ -80,6 +81,7 @@ class ProfileService:
                     tools=profile_data.tools,
                     experience=[exp.model_dump() for exp in profile_data.experience],
                     education=[edu.model_dump() for edu in profile_data.education],
+                    organizations=[org.model_dump() for org in profile_data.organizations],
                     certifications=profile_data.certifications,
                     projects=[proj.model_dump() for proj in profile_data.projects],
                     years_of_experience=profile_data.years_of_experience
@@ -114,21 +116,32 @@ class ProfileService:
     @staticmethod
     def get_candidate_profile(db: Session, user_id: Optional[str] = None) -> Optional[CandidateProfile]:
         if not user_id:
-            user = db.query(User).first()
-            if not user:
-                return None
+            user = ResumeService.get_or_create_default_user(db)
             user_id = user.id
         return db.query(CandidateProfile).filter(CandidateProfile.user_id == user_id).first()
 
-    @staticmethod
+    @classmethod
     def update_candidate_profile(
+        cls,
         db: Session,
-        profile_data: CandidateProfileData,
+        profile_data: Any,
         user_id: Optional[str] = None
     ) -> CandidateProfile:
         if not user_id:
             user = ResumeService.get_or_create_default_user(db)
             user_id = user.id
+
+        if isinstance(profile_data, dict):
+            profile_data = CandidateProfileData(**profile_data)
+
+        def dump_items(items):
+            res = []
+            for it in (items or []):
+                if hasattr(it, "model_dump"):
+                    res.append(it.model_dump())
+                elif isinstance(it, dict):
+                    res.append(it)
+            return res
 
         profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == user_id).first()
         if not profile:
@@ -144,10 +157,11 @@ class ProfileService:
                 programming_languages=profile_data.programming_languages,
                 frameworks=profile_data.frameworks,
                 tools=profile_data.tools,
-                experience=[exp.model_dump() for exp in profile_data.experience],
-                education=[edu.model_dump() for edu in profile_data.education],
+                experience=dump_items(profile_data.experience),
+                education=dump_items(profile_data.education),
+                organizations=dump_items(profile_data.organizations),
                 certifications=profile_data.certifications,
-                projects=[proj.model_dump() for proj in profile_data.projects],
+                projects=dump_items(profile_data.projects),
                 years_of_experience=profile_data.years_of_experience
             )
             db.add(profile)
@@ -162,15 +176,18 @@ class ProfileService:
             profile.programming_languages = profile_data.programming_languages
             profile.frameworks = profile_data.frameworks
             profile.tools = profile_data.tools
-            profile.experience = [exp.model_dump() for exp in profile_data.experience]
-            profile.education = [edu.model_dump() for edu in profile_data.education]
+            profile.experience = dump_items(profile_data.experience)
+            profile.education = dump_items(profile_data.education)
+            profile.organizations = dump_items(profile_data.organizations)
             profile.certifications = profile_data.certifications
-            profile.projects = [proj.model_dump() for proj in profile_data.projects]
+            profile.projects = dump_items(profile_data.projects)
             profile.years_of_experience = profile_data.years_of_experience
 
         db.commit()
         db.refresh(profile)
         return profile
+
+    update_profile = update_candidate_profile
 
     @staticmethod
     def get_or_create_preferences(db: Session, user_id: Optional[str] = None) -> CandidatePreference:

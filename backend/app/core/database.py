@@ -24,7 +24,21 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
+from sqlalchemy import text
+
 def init_db():
     # Import all models before creating tables so metadata has all schemas
     import app.models  # noqa
     Base.metadata.create_all(bind=engine)
+
+    # Auto-migrate newly added columns for SQLite
+    if settings.DATABASE_URL.startswith("sqlite"):
+        with engine.connect() as conn:
+            try:
+                res = conn.execute(text("PRAGMA table_info(candidate_profiles)")).fetchall()
+                existing_cols = {row[1] for row in res}
+                if len(existing_cols) > 0 and "organizations" not in existing_cols:
+                    conn.execute(text("ALTER TABLE candidate_profiles ADD COLUMN organizations JSON DEFAULT '[]'"))
+                    conn.commit()
+            except Exception:
+                pass

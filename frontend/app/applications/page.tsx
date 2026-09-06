@@ -265,12 +265,14 @@ export default function ApplicationsPage() {
                           <div>
                             <div className="flex items-start justify-between gap-2">
                               <span className="font-semibold text-white text-xs group-hover:text-emerald-400 transition-colors line-clamp-1">
-                                {job.title || "Target Role"}
+                                {job.title || "Posisi Terdaftar"}
                               </span>
                             </div>
-                            <p className="text-[11px] text-zinc-400 mt-0.5">
-                              {job.company || "Company"}
-                            </p>
+                            {job.company && (
+                              <p className="text-[11px] text-zinc-400 mt-0.5">
+                                {job.company}
+                              </p>
+                            )}
 
                             {/* Extra Info Pills */}
                             <div className="flex items-center gap-2 text-[10px] text-zinc-500 pt-2 flex-wrap">
@@ -354,8 +356,12 @@ export default function ApplicationsPage() {
                     onClick={() => handleOpenEdit(app)}
                   >
                     <td className="p-4">
-                      <div className="font-semibold text-white">{job.title || "Target Role"}</div>
-                      <div className="text-zinc-400 text-[11px]">{job.company || "Company"}</div>
+                      <div className="font-semibold text-white">{job.title || "Posisi Terdaftar"}</div>
+                      {job.company ? (
+                        <div className="text-zinc-400 text-[11px]">{job.company}</div>
+                      ) : (
+                        <div className="text-zinc-600 text-[11px] italic">Perusahaan tidak dicantumkan</div>
+                      )}
                     </td>
                     <td className="p-4">
                       <span className={`px-2.5 py-1 rounded-full border text-[11px] font-medium ${stage.color}`}>
@@ -397,11 +403,13 @@ export default function ApplicationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-white">
-                  {selectedApp.job?.title || "Role"}
+                  {selectedApp.job?.title || "Posisi Terdaftar"}
                 </h2>
-                <p className="text-xs text-zinc-400">
-                  {selectedApp.job?.company || "Company"}
-                </p>
+                {selectedApp.job?.company && (
+                  <p className="text-xs text-zinc-400">
+                    {selectedApp.job.company}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => setEditingModal(false)}

@@ -35,10 +35,26 @@ class MatchAgent:
         for s in (profile.skills + profile.programming_languages + profile.frameworks + profile.tools):
             candidate_skills.add(s.lower().strip())
 
-        # Also search candidate experience/project descriptions for mentions
-        exp_text = " ".join([e.description or "" for e in profile.experience] + [" ".join(e.achievements) for e in profile.experience])
+        # Also search candidate experience, education details, organizations, and certifications
+        exp_text = " ".join(
+            [e.company for e in profile.experience] +
+            [(e.role or e.title or "") for e in profile.experience] +
+            [e.description or "" for e in profile.experience] +
+            [" ".join(e.responsibilities) for e in profile.experience] +
+            [" ".join(e.achievements) for e in profile.experience]
+        )
+        edu_text = " ".join(
+            [(e.field_of_study or "") for e in profile.education] +
+            [" ".join(e.details) for e in profile.education]
+        )
+        org_text = " ".join(
+            [o.name for o in profile.organizations] +
+            [(o.role or "") for o in profile.organizations] +
+            [" ".join(o.responsibilities) for o in profile.organizations]
+        )
         proj_text = " ".join([p.description for p in profile.projects] + [" ".join(p.tech_stack) for p in profile.projects])
-        full_candidate_corpus = (exp_text + " " + proj_text + " " + (profile.summary or "")).lower()
+        cert_text = " ".join(profile.certifications)
+        full_candidate_corpus = (exp_text + " " + edu_text + " " + org_text + " " + proj_text + " " + cert_text + " " + (profile.summary or "")).lower()
 
         def candidate_has_skill(skill_name: str) -> bool:
             lower = skill_name.lower().strip()

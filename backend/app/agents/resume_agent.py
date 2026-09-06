@@ -12,6 +12,7 @@ class ResumeAgent:
     """
     Agent responsible for extracting clean text from uploaded resumes (PDF, DOCX).
     Ensures safe file handling, detects corrupted files, and strips artifacts.
+    Preserves sequential reading order of paragraphs, headings, and tables.
     """
 
     ALLOWED_EXTENSIONS = {".pdf", ".docx"}
@@ -74,7 +75,7 @@ class ResumeAgent:
                     extracted_parts.append(text.strip())
 
             full_text = "\n\n".join(extracted_parts).strip()
-            if not full_text or len(full_text.strip()) < 20:
+            if not full_text or len(full_text.strip()) < 10:
                 raise ResumeParsingError(
                     "The PDF file contains no extractable text. It may be a scanned image or empty."
                 )
@@ -92,17 +93,38 @@ class ResumeAgent:
     def _extract_from_docx(cls, file_path: str) -> Tuple[str, Optional[int]]:
         try:
             doc = Document(file_path)
-            paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+            extracted_elements = []
 
-            # Also extract from tables
-            for table in doc.tables:
-                for row in table.rows:
-                    row_text = " | ".join(c.text.strip() for c in row.cells if c.text.strip())
-                    if row_text:
-                        paragraphs.append(row_text)
+            # Traverse body elements in visual document order to preserve context
+            if hasattr(doc, "element") and hasattr(doc.element, "body"):
+                for child in doc.element.body:
+                    if child.tag.endswith("p"):
+                        p_text = "".join(child.itertext()).strip()
+                        if p_text:
+                            extracted_elements.append(p_text)
+                    elif child.tag.endswith("tbl"):
+                        for row_elem in child.findall(".//{*}tr"):
+                            row_cells = []
+                            for cell_elem in row_elem.findall(".//{*}tc"):
+                                cell_text = "".join(cell_elem.itertext()).strip()
+                                if cell_text and (not row_cells or cell_text != row_cells[-1]):
+                                    row_cells.append(cell_text)
+                            if row_cells:
+                                extracted_elements.append(" | ".join(row_cells))
 
-            full_text = "\n\n".join(paragraphs).strip()
-            if not full_text or len(full_text.strip()) < 20:
+            # Fallback if body iteration was empty
+            if not extracted_elements:
+                for p in doc.paragraphs:
+                    if p.text.strip():
+                        extracted_elements.append(p.text.strip())
+                for table in doc.tables:
+                    for row in table.rows:
+                        row_text = " | ".join(c.text.strip() for c in row.cells if c.text.strip())
+                        if row_text:
+                            extracted_elements.append(row_text)
+
+            full_text = "\n\n".join(extracted_elements).strip()
+            if not full_text or len(full_text.strip()) < 10:
                 raise ResumeParsingError(
                     "The DOCX file contains no extractable text or is empty."
                 )

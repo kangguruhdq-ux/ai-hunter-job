@@ -22,6 +22,7 @@ class CandidateProfile(TimeStampedBase):
 
     experience = Column(JSON, default=list)
     education = Column(JSON, default=list)
+    organizations = Column(JSON, default=list)
     certifications = Column(JSON, default=list)
     projects = Column(JSON, default=list)
     years_of_experience = Column(Float, default=0.0)
@@ -29,3 +30,7 @@ class CandidateProfile(TimeStampedBase):
     user = relationship("User", back_populates="profile")
     resume = relationship("Resume", back_populates="profile")
     matches = relationship("JobMatch", back_populates="candidate_profile", cascade="all, delete-orphan")
+
+    @property
+    def full_name(self) -> str:
+        return self.name

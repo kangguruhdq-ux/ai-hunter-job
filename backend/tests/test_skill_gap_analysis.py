@@ -94,6 +94,11 @@ def test_skill_gap_api_flow(client, db: Session):
     assert len(jobs) > 0
 
     first_job = jobs[0]
+    req_skills = first_job.requirements.required_skills if first_job.requirements else ["Python"]
+    ProfileService.update_profile(db=db, profile_data={
+        "skills": req_skills + ["Python", "FastAPI"]
+    })
+
     res = client.get(f"/api/v1/jobs/{first_job.id}/skill-gap")
     assert res.status_code == 200
     data = res.json()

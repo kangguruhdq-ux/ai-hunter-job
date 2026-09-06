@@ -51,6 +51,7 @@ class MatchService:
             tools=profile.tools or [],
             experience=profile.experience or [],
             education=profile.education or [],
+            organizations=getattr(profile, "organizations", []) or [],
             certifications=profile.certifications or [],
             projects=profile.projects or [],
             years_of_experience=profile.years_of_experience or 0.0

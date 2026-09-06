@@ -15,7 +15,9 @@ import {
   RefreshCw,
   Plus,
   Trash2,
-  ShieldCheck
+  ShieldCheck,
+  Award,
+  Users
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -40,8 +42,26 @@ export default function ResumePage() {
   const [newSkill, setNewSkill] = useState("");
   const [experience, setExperience] = useState<any[]>([]);
   const [education, setEducation] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [newCert, setNewCert] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const syncProfileData = (data: any) => {
+    if (!data) return;
+    setProfile(data);
+    setFullName(data.full_name || "");
+    setEmail(data.email || "");
+    setPhone(data.phone || "");
+    setLocation(data.location || "");
+    setSummary(data.summary || "");
+    setSkills(Array.isArray(data.skills) ? data.skills : []);
+    setExperience(Array.isArray(data.experience) ? data.experience : []);
+    setEducation(Array.isArray(data.education) ? data.education : []);
+    setOrganizations(Array.isArray(data.organizations) ? data.organizations : []);
+    setCertifications(Array.isArray(data.certifications) ? data.certifications : []);
+  };
 
   const fetchProfile = async () => {
     try {
@@ -49,15 +69,7 @@ export default function ResumePage() {
       setError(null);
       const data = await api.getProfile();
       if (data) {
-        setProfile(data);
-        setFullName(data.full_name || "");
-        setEmail(data.email || "");
-        setPhone(data.phone || "");
-        setLocation(data.location || "");
-        setSummary(data.summary || "");
-        setSkills(Array.isArray(data.skills) ? data.skills : []);
-        setExperience(Array.isArray(data.experience) ? data.experience : []);
-        setEducation(Array.isArray(data.education) ? data.education : []);
+        syncProfileData(data);
       }
     } catch (err: any) {
       // It's normal if no profile exists yet
@@ -113,15 +125,7 @@ export default function ResumePage() {
       setAnalyzing(true);
       
       const profileRes = await api.analyzeResume(uploadRes.id);
-      setProfile(profileRes);
-      setFullName(profileRes.full_name || "");
-      setEmail(profileRes.email || "");
-      setPhone(profileRes.phone || "");
-      setLocation(profileRes.location || "");
-      setSummary(profileRes.summary || "");
-      setSkills(Array.isArray(profileRes.skills) ? profileRes.skills : []);
-      setExperience(Array.isArray(profileRes.experience) ? profileRes.experience : []);
-      setEducation(Array.isArray(profileRes.education) ? profileRes.education : []);
+      syncProfileData(profileRes);
       
       setSuccessMsg("Candidate profile extracted and saved successfully!");
       setFile(null);
@@ -147,8 +151,10 @@ export default function ResumePage() {
         skills,
         experience,
         education,
+        organizations,
+        certifications,
       });
-      setProfile(updated);
+      syncProfileData(updated);
       setSuccessMsg("Candidate profile updated successfully!");
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
@@ -167,6 +173,17 @@ export default function ResumePage() {
 
   const removeSkill = (skillToRemove: string) => {
     setSkills(skills.filter((s) => s !== skillToRemove));
+  };
+
+  const addCert = () => {
+    if (newCert.trim() && !certifications.includes(newCert.trim())) {
+      setCertifications([...certifications, newCert.trim()]);
+      setNewCert("");
+    }
+  };
+
+  const removeCert = (certToRemove: string) => {
+    setCertifications(certifications.filter((c) => c !== certToRemove));
   };
 
   return (
@@ -286,7 +303,7 @@ export default function ResumePage() {
         <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
         <div>
           <span className="font-semibold text-zinc-200">Strict Anti-Hallucination Policy:</span>{" "}
-          JobHunter AI strictly enforces grounding. The system will never fabricate dates, employers, certifications, degrees, or quantitative metrics. Review and refine your candidate profile below to ensure tailored materials accurately emphasize your real strengths.
+          JobHunter AI strictly enforces factual grounding. The system will never fabricate dates, employers, roles, certifications, degrees, or quantitative metrics. If a field was omitted in your resume, it will remain blank or indicated as &quot;Tidak dicantumkan&quot;.
         </div>
       </div>
 
@@ -309,36 +326,40 @@ export default function ResumePage() {
                 <label className="text-xs font-medium text-zinc-400">Full Name</label>
                 <input
                   type="text"
+                  placeholder="Tidak dicantumkan"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
+                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 placeholder:text-zinc-600"
                 />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-400">Email Address</label>
                 <input
                   type="email"
+                  placeholder="Tidak dicantumkan"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
+                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 placeholder:text-zinc-600"
                 />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-400">Phone</label>
                 <input
                   type="text"
+                  placeholder="Tidak dicantumkan"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
+                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 placeholder:text-zinc-600"
                 />
               </div>
               <div>
                 <label className="text-xs font-medium text-zinc-400">Location</label>
                 <input
                   type="text"
+                  placeholder="Tidak dicantumkan"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500"
+                  className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 placeholder:text-zinc-600"
                 />
               </div>
             </div>
@@ -347,9 +368,10 @@ export default function ResumePage() {
               <label className="text-xs font-medium text-zinc-400">Professional Summary</label>
               <textarea
                 rows={3}
+                placeholder="Tidak dicantumkan di CV"
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 resize-y"
+                className="mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-emerald-500 resize-y placeholder:text-zinc-600"
               />
             </div>
           </div>
@@ -365,7 +387,7 @@ export default function ResumePage() {
             <div className="flex items-center gap-2 max-w-md">
               <input
                 type="text"
-                placeholder="Add a verified skill (e.g. TypeScript, Docker)..."
+                placeholder="Add a verified skill (e.g. MikroTik, Python)..."
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 onKeyDown={(e) => {
@@ -388,21 +410,25 @@ export default function ResumePage() {
 
             {/* Skill Tags */}
             <div className="flex flex-wrap gap-2 pt-2">
-              {skills.map((sk) => (
-                <span
-                  key={sk}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-zinc-800/80 border border-zinc-700 text-xs text-zinc-200 group"
-                >
-                  <span>{sk}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeSkill(sk)}
-                    className="text-zinc-500 hover:text-rose-400 transition-colors"
+              {skills.length === 0 ? (
+                <span className="text-xs text-zinc-500 italic">Tidak dicantumkan</span>
+              ) : (
+                skills.map((sk) => (
+                  <span
+                    key={sk}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-zinc-800/80 border border-zinc-700 text-xs text-zinc-200 group"
                   >
-                    &times;
-                  </button>
-                </span>
-              ))}
+                    <span>{sk}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeSkill(sk)}
+                      className="text-zinc-500 hover:text-rose-400 transition-colors"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
           </div>
 
@@ -413,59 +439,243 @@ export default function ResumePage() {
               <span>Verified Work Experience ({experience.length})</span>
             </h2>
 
-            <div className="space-y-4">
-              {experience.map((exp, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <span className="font-semibold text-white text-sm">
-                      {exp.role || "Role"} at {exp.company || "Company"}
-                    </span>
-                    <span className="text-xs text-zinc-400 font-mono">
-                      {exp.start_date || ""} — {exp.end_date || "Present"}
-                    </span>
-                  </div>
-                  {exp.location && (
-                    <p className="text-xs text-zinc-500">{exp.location}</p>
-                  )}
-                  {Array.isArray(exp.highlights) && exp.highlights.length > 0 && (
-                    <ul className="list-disc list-inside text-xs text-zinc-300 space-y-1 pt-1">
-                      {exp.highlights.map((hl: string, hIdx: number) => (
-                        <li key={hIdx}>{hl}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
-            </div>
+            {experience.length === 0 ? (
+              <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 text-xs text-zinc-500 italic">
+                Tidak ada pengalaman kerja formal yang dicantumkan di CV.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {experience.map((exp, idx) => {
+                  const roleTitle = exp.role || exp.title;
+                  const companyName = exp.company;
+                  const heading = roleTitle && companyName
+                    ? `${roleTitle} at ${companyName}`
+                    : roleTitle
+                    ? roleTitle
+                    : companyName
+                    ? `${companyName} (Pengalaman Kerja / PKL)`
+                    : "Pengalaman Kerja";
+
+                  const periodText = exp.period || 
+                    (exp.start_date && exp.end_date 
+                      ? `${exp.start_date} — ${exp.end_date}` 
+                      : exp.start_date 
+                      ? exp.start_date 
+                      : exp.end_date 
+                      ? exp.end_date 
+                      : null);
+
+                  const bulletPoints = (Array.isArray(exp.responsibilities) && exp.responsibilities.length > 0)
+                    ? exp.responsibilities
+                    : (Array.isArray(exp.achievements) && exp.achievements.length > 0)
+                    ? exp.achievements
+                    : (Array.isArray(exp.highlights) && exp.highlights.length > 0)
+                    ? exp.highlights
+                    : [];
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <span className="font-semibold text-white text-sm">
+                          {heading}
+                        </span>
+                        {periodText && (
+                          <span className="text-xs text-zinc-400 font-mono">
+                            {periodText}
+                          </span>
+                        )}
+                      </div>
+                      {exp.location && (
+                        <p className="text-xs text-zinc-500">{exp.location}</p>
+                      )}
+                      {bulletPoints.length > 0 && (
+                        <ul className="list-disc list-inside text-xs text-zinc-300 space-y-1 pt-1">
+                          {bulletPoints.map((hl: string, hIdx: number) => (
+                            <li key={hIdx}>{hl}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Section 4: Education */}
           <div className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
             <h2 className="text-base font-semibold text-white flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-emerald-400" />
-              <span>Education & Credentials ({education.length})</span>
+              <span>Education & Academic Background ({education.length})</span>
             </h2>
 
-            <div className="space-y-3">
-              {education.map((edu, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-semibold text-white text-sm">
-                      {edu.degree || "Degree"} in {edu.field || "Field"}
-                    </span>
-                    <p className="text-xs text-zinc-400">{edu.institution || "Institution"}</p>
-                  </div>
-                  <span className="text-xs text-zinc-500 font-mono">
-                    {edu.graduation_year || ""}
+            {education.length === 0 ? (
+              <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 text-xs text-zinc-500 italic">
+                Tidak ada riwayat pendidikan yang dicantumkan.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {education.map((edu, idx) => {
+                  const majorField = edu.field_of_study || edu.field;
+                  const degreeTitle = edu.degree && majorField
+                    ? `${edu.degree} — ${majorField}`
+                    : edu.degree
+                    ? edu.degree
+                    : majorField
+                    ? majorField
+                    : edu.institution || "Pendidikan";
+
+                  const periodText = edu.period ||
+                    (edu.start_date && edu.end_date
+                      ? `${edu.start_date} — ${edu.end_date}`
+                      : edu.graduation_year
+                      ? edu.graduation_year
+                      : edu.end_date || null);
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-1.5"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <span className="font-semibold text-white text-sm">
+                          {degreeTitle}
+                        </span>
+                        {periodText && (
+                          <span className="text-xs text-zinc-400 font-mono">
+                            {periodText}
+                          </span>
+                        )}
+                      </div>
+                      {edu.institution && (
+                        <p className="text-xs text-zinc-400 font-medium">{edu.institution}</p>
+                      )}
+                      {edu.gpa && (
+                        <p className="text-xs text-emerald-400 font-mono">
+                          Nilai / Rata-rata: {edu.gpa}
+                        </p>
+                      )}
+                      {Array.isArray(edu.details) && edu.details.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {edu.details.map((d: string, dIdx: number) => (
+                            <span
+                              key={dIdx}
+                              className="text-[11px] px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300"
+                            >
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Section 5: Organizations & Leadership */}
+          {organizations.length > 0 && (
+            <div className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
+              <h2 className="text-base font-semibold text-white flex items-center gap-2">
+                <Users className="h-4 w-4 text-emerald-400" />
+                <span>Organizations & Leadership Activities ({organizations.length})</span>
+              </h2>
+
+              <div className="space-y-3">
+                {organizations.map((org, idx) => {
+                  const orgHeading = org.role && org.name
+                    ? `${org.role} — ${org.name}`
+                    : org.name || org.role || "Organisasi";
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-1.5"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <span className="font-semibold text-white text-sm">
+                          {orgHeading}
+                        </span>
+                        {org.period && (
+                          <span className="text-xs text-zinc-400 font-mono">
+                            {org.period}
+                          </span>
+                        )}
+                      </div>
+                      {org.description && (
+                        <p className="text-xs text-zinc-400">{org.description}</p>
+                      )}
+                      {Array.isArray(org.responsibilities) && org.responsibilities.length > 0 && (
+                        <ul className="list-disc list-inside text-xs text-zinc-300 space-y-1 pt-1">
+                          {org.responsibilities.map((resp: string, rIdx: number) => (
+                            <li key={rIdx}>{resp}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 6: Certifications & Training */}
+          <div className="p-6 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-4">
+            <h2 className="text-base font-semibold text-white flex items-center gap-2">
+              <Award className="h-4 w-4 text-emerald-400" />
+              <span>Certifications & Training ({certifications.length})</span>
+            </h2>
+
+            {/* Add Cert Input */}
+            <div className="flex items-center gap-2 max-w-md">
+              <input
+                type="text"
+                placeholder="Add certification (e.g. Google AI Essentials)..."
+                value={newCert}
+                onChange={(e) => setNewCert(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCert();
+                  }
+                }}
+                className="flex-1 px-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={addCert}
+                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium border border-zinc-700 flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                <span>Add</span>
+              </button>
+            </div>
+
+            {/* Cert Tags */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {certifications.length === 0 ? (
+                <span className="text-xs text-zinc-500 italic">Tidak dicantumkan di CV</span>
+              ) : (
+                certifications.map((cert) => (
+                  <span
+                    key={cert}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-zinc-800/80 border border-zinc-700 text-xs text-zinc-200 group"
+                  >
+                    <span>{cert}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeCert(cert)}
+                      className="text-zinc-500 hover:text-rose-400 transition-colors"
+                    >
+                      &times;
+                    </button>
                   </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
