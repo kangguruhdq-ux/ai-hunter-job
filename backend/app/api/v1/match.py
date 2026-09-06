@@ -60,3 +60,27 @@ async def get_recommended_jobs_ranked(
             "overall_score": item["score"]
         })
     return response_list
+
+from app.schemas.recommendation import JobSkillGapAnalysisResponse
+from app.services.recommendation_service import RecommendationService
+
+@router.get("/jobs/{job_id}/skill-gap", response_model=JobSkillGapAnalysisResponse)
+async def get_job_skill_gap_analysis(
+    job_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get in-depth skill gap analysis categorizing skills into
+    Already Strong, Some Experience, Needs Improvement, and Missing,
+    along with actionable preparation steps and interview focus areas.
+    """
+    try:
+        return await RecommendationService.get_skill_gap_analysis(db=db, job_id=job_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate skill gap analysis: {str(e)}"
+        )
+
