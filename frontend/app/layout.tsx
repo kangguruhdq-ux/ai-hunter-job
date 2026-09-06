@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
   title: "JobHunter AI — AI Job Search & Application Assistant",
@@ -13,8 +14,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#09090b] text-[#f4f4f5]">
-        {children}
+      <body className="min-h-screen bg-[#09090b] text-[#f4f4f5] antialiased">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
