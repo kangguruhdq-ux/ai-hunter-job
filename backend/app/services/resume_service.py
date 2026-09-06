@@ -122,8 +122,11 @@ class ResumeService:
             raise ResumeParsingError(err_msg)
 
     @staticmethod
-    def get_resume(db: Session, resume_id: str) -> Optional[Resume]:
-        return db.query(Resume).filter(Resume.id == resume_id).first()
+    def get_resume(db: Session, resume_id: str, user_id: Optional[str] = None) -> Optional[Resume]:
+        query = db.query(Resume).filter(Resume.id == resume_id)
+        if user_id:
+            query = query.filter(Resume.user_id == user_id)
+        return query.first()
 
     @staticmethod
     def get_latest_resume(db: Session, user_id: Optional[str] = None) -> Optional[Resume]:

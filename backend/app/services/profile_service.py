@@ -20,7 +20,7 @@ class ProfileService:
         user_id: Optional[str] = None
     ) -> CandidateProfile:
         resume = db.query(Resume).filter(Resume.id == resume_id).first()
-        if not resume:
+        if not resume or (user_id and resume.user_id != user_id):
             raise ValueError(f"Resume {resume_id} not found.")
 
         if not resume.raw_text:

@@ -22,3 +22,25 @@ def ensure_tables_exist():
     """Ensure tables exist before every single test."""
     Base.metadata.create_all(bind=engine)
 
+from app.main import app
+from app.api.deps import get_current_user, get_current_active_user
+from app.services.resume_service import ResumeService
+
+@pytest.fixture(autouse=True)
+def auto_authenticate_legacy_tests(request):
+    """Automatically authenticate legacy tests that don't pass explicit Bearer tokens."""
+    if "test_auth" in request.module.__name__:
+        yield
+        return
+
+    with SessionLocal() as db:
+        user = ResumeService.get_or_create_default_user(db)
+        app.dependency_overrides[get_current_user] = lambda: user
+        app.dependency_overrides[get_current_active_user] = lambda: user
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_current_active_user, None)
+
+

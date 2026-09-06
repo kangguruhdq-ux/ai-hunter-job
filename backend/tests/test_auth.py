@@ -18,7 +18,18 @@ def db():
     yield session
     session.close()
 
+@pytest.fixture(scope="module", autouse=True)
+def cleanup_auth_test_users():
+    with SessionLocal() as db:
+        db.query(User).filter(User.email.in_(["testcandidate@example.com", "inactive@example.com"])).delete(synchronize_session=False)
+        db.commit()
+    yield
+    with SessionLocal() as db:
+        db.query(User).filter(User.email.in_(["testcandidate@example.com", "inactive@example.com"])).delete(synchronize_session=False)
+        db.commit()
+
 def test_register_success(client):
+
     res = client.post("/api/v1/auth/register", json={
         "email": "testcandidate@example.com",
         "full_name": "Test Candidate",

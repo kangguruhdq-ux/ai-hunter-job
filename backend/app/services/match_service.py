@@ -104,10 +104,12 @@ class MatchService:
                 match_record.skill_gaps = [g.model_dump() for g in match_result.skill_gaps]
                 match_record.recommendation = match_result.recommendation
                 match_record.reasoning = match_result.reasoning
+                match_record.user_id = profile.user_id
             else:
                 match_record = JobMatch(
                     candidate_profile_id=profile.id,
                     job_id=job.id,
+                    user_id=profile.user_id,
                     overall_score=match_result.overall_score,
                     skills_score=match_result.skills_score,
                     experience_score=match_result.experience_score,

@@ -34,9 +34,12 @@ class DashboardService:
         offers_count = sum(1 for a in apps if a.status == "Offer")
         active_apps_count = sum(1 for a in apps if a.status not in ["Rejected"])
 
-        tailored_resumes_count = db.query(GeneratedDocument).filter(
+        doc_query = db.query(GeneratedDocument).filter(
             GeneratedDocument.document_type == "tailored_resume"
-        ).count()
+        )
+        if user_id:
+            doc_query = doc_query.filter(GeneratedDocument.user_id == user_id)
+        tailored_resumes_count = doc_query.count()
 
         # 2. Match Scores
         match_query = db.query(JobMatch)
@@ -63,7 +66,11 @@ class DashboardService:
                 "recommendation": item["match"].recommendation if item["match"] else "GOOD_MATCH"
             })
 
-        latest_resume = db.query(Resume).order_by(Resume.created_at.desc()).first()
+        resume_query = db.query(Resume)
+        if user_id:
+            resume_query = resume_query.filter(Resume.user_id == user_id)
+        latest_resume = resume_query.order_by(Resume.created_at.desc()).first()
+
 
         return DashboardStatsResponse(
             recommended_jobs_count=jobs_count,

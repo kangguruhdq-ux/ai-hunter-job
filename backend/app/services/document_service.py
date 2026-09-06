@@ -196,8 +196,11 @@ class DocumentService:
 
 
     @staticmethod
-    def get_document(db: Session, document_id: str) -> Optional[GeneratedDocument]:
-        return db.query(GeneratedDocument).filter(GeneratedDocument.id == document_id).first()
+    def get_document(db: Session, document_id: str, user_id: Optional[str] = None) -> Optional[GeneratedDocument]:
+        query = db.query(GeneratedDocument).filter(GeneratedDocument.id == document_id)
+        if user_id:
+            query = query.filter(GeneratedDocument.user_id == user_id)
+        return query.first()
 
     @staticmethod
     def get_latest_job_document(
@@ -234,9 +237,10 @@ class DocumentService:
     def update_document(
         db: Session,
         document_id: str,
-        data: DocumentUpdateRequest
+        data: DocumentUpdateRequest,
+        user_id: Optional[str] = None
     ) -> GeneratedDocument:
-        doc = db.query(GeneratedDocument).filter(GeneratedDocument.id == document_id).first()
+        doc = DocumentService.get_document(db, document_id, user_id=user_id)
         if not doc:
             raise ValueError(f"Document with ID '{document_id}' not found.")
 
@@ -247,3 +251,4 @@ class DocumentService:
         db.commit()
         db.refresh(doc)
         return doc
+

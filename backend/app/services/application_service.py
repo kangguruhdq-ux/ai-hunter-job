@@ -64,19 +64,24 @@ class ApplicationService:
         return app
 
     @staticmethod
-    def get_application(db: Session, application_id: str) -> Optional[Application]:
-        return db.query(Application).filter(Application.id == application_id).first()
+    def get_application(db: Session, application_id: str, user_id: Optional[str] = None) -> Optional[Application]:
+        query = db.query(Application).filter(Application.id == application_id)
+        if user_id:
+            query = query.filter(Application.user_id == user_id)
+        return query.first()
 
     @classmethod
     def update_application(
         cls,
         db: Session,
         application_id: str,
-        data: ApplicationUpdate
+        data: ApplicationUpdate,
+        user_id: Optional[str] = None
     ) -> Application:
-        app = cls.get_application(db, application_id)
+        app = cls.get_application(db, application_id, user_id=user_id)
         if not app:
             raise ValueError(f"Application with ID '{application_id}' not found.")
+
 
         if data.status is not None:
             if data.status not in VALID_STATUSES:
@@ -147,10 +152,14 @@ class ApplicationService:
         return columns
 
     @staticmethod
-    def delete_application(db: Session, application_id: str) -> bool:
-        app = db.query(Application).filter(Application.id == application_id).first()
+    def delete_application(db: Session, application_id: str, user_id: Optional[str] = None) -> bool:
+        query = db.query(Application).filter(Application.id == application_id)
+        if user_id:
+            query = query.filter(Application.user_id == user_id)
+        app = query.first()
         if not app:
             return False
         db.delete(app)
         db.commit()
         return True
+
