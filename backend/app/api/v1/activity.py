@@ -42,14 +42,70 @@ async def run_orchestrator_pipeline(
 ):
     """
     Run full end-to-end orchestration pipeline:
-    Calculates match -> Tailors resume -> Generates cover letter.
+    Calculates match -> Skill Gap Matrix -> Tailors resume -> Generates cover letter -> Updates Application Tracker.
     Emits real-time AI activity events.
     """
     result = await Orchestrator.run_full_pipeline(db=db, job_id=job_id)
+    m = result["match"]
+    tr = result["tailored_resume"]
+    cl = result["cover_letter"]
+    app = result["application"]
+    sg = result["skill_gap"]
+
+    sg_dict = sg.model_dump() if hasattr(sg, "model_dump") else (sg.dict() if hasattr(sg, "dict") else sg)
+    cats = sg_dict.get("categories", {})
+
+    def extract_skills(cat_key: str):
+        items = cats.get(cat_key, [])
+        return [i.get("skill", str(i)) if isinstance(i, dict) else getattr(i, "skill", str(i)) for i in items]
+
+    # Augment skill_gap dict with direct category lists for frontend convenience
+    sg_dict["already_strong"] = extract_skills("Already Strong")
+    sg_dict["some_experience"] = extract_skills("Some Experience")
+    sg_dict["needs_improvement"] = extract_skills("Needs Improvement")
+    sg_dict["missing"] = extract_skills("Missing")
+    sg_dict["actionable_roadmap"] = [
+        {
+            "skill": item.get("title", ""),
+            "action": item.get("description", ""),
+            "priority": item.get("priority", "")
+        } if isinstance(item, dict) else {
+            "skill": getattr(item, "title", ""),
+            "action": getattr(item, "description", ""),
+            "priority": getattr(item, "priority", "")
+        }
+        for item in sg_dict.get("action_plan", [])
+    ]
+
     return {
         "status": result["status"],
         "job_id": job_id,
-        "match_score": result["match"].overall_score,
-        "tailored_resume_id": result["tailored_resume"].id,
-        "cover_letter_id": result["cover_letter"].id
+        "match_score": m.overall_score,
+        "tailored_resume_id": tr.id,
+        "cover_letter_id": cl.id,
+        "match": {
+            "overall_score": m.overall_score,
+            "breakdown": m.score_weights or {},
+            "strengths": m.strengths or [],
+            "reasoning": m.reasoning,
+            "recommendation": m.recommendation
+        },
+        "skill_gap": sg_dict,
+        "tailored_resume": {
+            "id": tr.id,
+            "title": tr.title,
+            "document_type": tr.document_type,
+            "content": tr.content
+        },
+        "cover_letter": {
+            "id": cl.id,
+            "title": cl.title,
+            "document_type": cl.document_type,
+            "content": cl.content
+        },
+        "application": {
+            "id": app.id,
+            "status": app.status,
+            "job_id": app.job_id
+        }
     }

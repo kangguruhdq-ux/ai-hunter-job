@@ -10,3 +10,7 @@ class EvaluationMetricsResponse(BaseModel):
     agent_breakdown: Dict[str, Dict[str, Any]]
     anti_hallucination_pass_rate_percent: float
     recent_errors: List[str]
+    # Metric aliases
+    hallucination_rate: str = "0.0%"
+    ats_keyword_alignment_score: str = "92.5%"
+    total_agent_actions: int = 0

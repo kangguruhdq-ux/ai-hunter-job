@@ -6,7 +6,10 @@ from app.services.resume_service import ResumeService
 from app.services.profile_service import ProfileService
 from app.services.job_service import JobService
 from app.services.match_service import MatchService
+from app.services.recommendation_service import RecommendationService
 from app.services.document_service import DocumentService
+from app.services.application_service import ApplicationService
+from app.schemas.application import ApplicationCreate
 
 class Orchestrator:
     """
@@ -41,11 +44,25 @@ class Orchestrator:
             # 2. Match Candidate against Job
             match_record = await MatchService.match_candidate_to_job(db, job_id=job_id, user_id=user_id)
 
-            # 3. Generate Tailored Resume
+            # 3. Skill Gap Analysis
+            skill_gap = await RecommendationService.get_skill_gap_analysis(db, job_id=job_id, user_id=user_id)
+
+            # 4. Generate Tailored Resume
             tailored_resume = await DocumentService.generate_tailored_resume(db, job_id=job_id, user_id=user_id)
 
-            # 4. Generate Cover Letter
+            # 5. Generate Cover Letter
             cover_letter = await DocumentService.generate_cover_letter(db, job_id=job_id, user_id=user_id)
+
+            # 6. Add/Update Application in Tracker
+            app_record = ApplicationService.create_application(
+                db=db,
+                data=ApplicationCreate(
+                    job_id=job_id,
+                    status="Applied",
+                    notes=f"Orchestrated AI application. Compatibility Score: {match_record.overall_score}%"
+                ),
+                user_id=user_id
+            )
 
             ActivityService.complete_activity(
                 db=db,
@@ -54,15 +71,19 @@ class Orchestrator:
                 metadata={
                     "match_score": match_record.overall_score,
                     "tailored_resume_id": tailored_resume.id,
-                    "cover_letter_id": cover_letter.id
+                    "cover_letter_id": cover_letter.id,
+                    "application_id": app_record.id
                 }
             )
 
             return {
                 "status": "success",
+                "job_id": job_id,
                 "match": match_record,
+                "skill_gap": skill_gap,
                 "tailored_resume": tailored_resume,
-                "cover_letter": cover_letter
+                "cover_letter": cover_letter,
+                "application": app_record
             }
 
         except Exception as e:

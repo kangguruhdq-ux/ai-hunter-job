@@ -25,3 +25,9 @@ class DashboardStatsResponse(BaseModel):
     active_resume_filename: Optional[str] = None
     candidate_name: Optional[str] = None
     top_matches: list = []
+    # Helpful aliases for UI and API clients
+    total_jobs: int = 0
+    active_applications: int = 0
+    resumes_tailored: int = 0
+    avg_match_score: int = 0
+    provider: str = "mock"

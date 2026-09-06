@@ -120,7 +120,10 @@ export default function ApplicationsPage() {
     }
   };
 
-  const totalApplications = kanbanData.reduce((acc, col) => acc + (col.items?.length || 0), 0);
+  const totalApplications = kanbanData.reduce(
+    (acc, col) => acc + (col.applications?.length || col.items?.length || 0),
+    0
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -225,7 +228,7 @@ export default function ApplicationsPage() {
         <div className="flex gap-4 overflow-x-auto pb-6 pt-1 select-none min-h-[600px]">
           {STAGES.map((col) => {
             const colData = kanbanData.find((c) => c.status === col.id);
-            const items = colData?.items || [];
+            const items = colData?.applications || colData?.items || [];
 
             return (
               <div
@@ -340,7 +343,7 @@ export default function ApplicationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/60">
-              {kanbanData.flatMap((c) => c.items || []).map((app: any) => {
+              {kanbanData.flatMap((c) => c.applications || c.items || []).map((app: any) => {
                 const job = app.job || {};
                 const stage = STAGES.find((s) => s.id === app.status) || STAGES[1];
 
