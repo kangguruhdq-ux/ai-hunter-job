@@ -7,6 +7,8 @@ from app.schemas.job import (
 )
 from app.services.job_service import JobService
 from app.agents.job_agent import JobFetchError
+from app.api.deps import get_current_admin_user
+from app.models.user import User
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
@@ -89,8 +91,12 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
     return job
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_job(job_id: str, db: Session = Depends(get_db)):
-    """Remove a job from active listings."""
+def delete_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """Remove a job from active listings. Requires administrator role."""
     job = JobService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.")
