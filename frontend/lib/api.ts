@@ -163,11 +163,12 @@ export const api = {
       fetchJson<void>(`/admin/documents/${documentId}`, { method: "DELETE" }),
 
     // AI Activity Monitoring & Telemetry
-    getAIActivities: (params?: { status?: string; agent_name?: string; model_name?: string; fallback_used?: boolean; skip?: number; limit?: number }) => {
+    getAIActivities: (params?: { status?: string; agent_name?: string; model_name?: string; fallback_used?: boolean; activity_type?: string; skip?: number; limit?: number }) => {
       const q = new URLSearchParams();
       if (params?.status) q.append("status", params.status);
       if (params?.agent_name) q.append("agent_name", params.agent_name);
       if (params?.model_name) q.append("model_name", params.model_name);
+      if (params?.activity_type) q.append("activity_type", params.activity_type);
       if (params?.fallback_used !== undefined) q.append("fallback_used", String(params.fallback_used));
       if (params?.skip) q.append("skip", String(params.skip));
       if (params?.limit) q.append("limit", String(params.limit));
