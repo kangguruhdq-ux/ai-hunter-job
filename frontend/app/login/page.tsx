@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Shield } from "lucide-react";
+import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,18 +43,12 @@ export default function LoginPage() {
     }
   };
 
-  const handleFillDemoAdmin = () => {
-    setEmail("admin@jobhunter.ai");
-    setPassword("AdminJobHunter2026!");
-    setError(null);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#09090b]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-zinc-400 font-mono">Memuat sesi...</p>
+          <p className="text-xs text-zinc-400 font-mono">Memverifikasi sesi...</p>
         </div>
       </div>
     );
@@ -101,9 +96,10 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="anda@perusahaan.com"
+                  placeholder="nama@email.com"
                   className="block w-full pl-9 pr-3 py-2.5 text-sm bg-zinc-900/90 border border-zinc-700/80 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
                 />
               </div>
@@ -123,6 +119,7 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -132,10 +129,24 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-zinc-200 transition-colors"
+                  aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me Option */}
+            <div className="flex items-center justify-between text-xs">
+              <label className="flex items-center gap-2 text-zinc-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded bg-zinc-900 border-zinc-700 text-emerald-600 focus:ring-emerald-500/40 focus:ring-offset-0"
+                />
+                <span>Ingat saya di perangkat ini</span>
+              </label>
             </div>
 
             {/* Submit Button */}
@@ -158,23 +169,8 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Credentials Pill */}
-          <div className="mt-6 pt-5 border-t border-zinc-800">
-            <button
-              type="button"
-              onClick={handleFillDemoAdmin}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 transition-all text-xs text-zinc-400 hover:text-zinc-200 group"
-            >
-              <div className="flex items-center gap-2">
-                <Shield className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Masuk sebagai Akun Administrator</span>
-              </div>
-              <span className="text-[10px] text-emerald-400 font-mono group-hover:underline">Gunakan Demo Admin</span>
-            </button>
-          </div>
-
           {/* Footer Register Link */}
-          <div className="mt-6 text-center text-xs text-zinc-400">
+          <div className="mt-6 pt-5 border-t border-zinc-800/80 text-center text-xs text-zinc-400">
             Belum memiliki akun JobHunter AI?{" "}
             <Link
               href="/register"
