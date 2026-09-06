@@ -60,8 +60,9 @@ def user_b(client):
     assert res.status_code == 201
     return res.json()
 
-@pytest.fixture(scope="module")
-def admin_user(db):
+@pytest.fixture
+def admin_user(db: Session):
+
     admin = User(
         email="admin_iso@example.com",
         full_name="Admin Isolation",
@@ -212,3 +213,54 @@ def test_unauthenticated_requests_blocked(client):
     assert client.get("/api/v1/applications/kanban").status_code == 401
     assert client.get("/api/v1/documents").status_code == 401
     assert client.get("/api/v1/ai/dashboard-stats").status_code == 401
+    assert client.get("/api/v1/admin/stats").status_code == 401
+
+def test_admin_rbac_protection(client, user_a, admin_user):
+    token_user = user_a["access_token"]
+    token_admin = admin_user["token"]
+
+    # 1. Normal user cannot access admin stats (403 Forbidden)
+    res_user = client.get("/api/v1/admin/stats", headers={"Authorization": f"Bearer {token_user}"})
+    assert res_user.status_code == 403
+
+    # 2. Normal user cannot access admin users list (403 Forbidden)
+    res_user_list = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {token_user}"})
+    assert res_user_list.status_code == 403
+
+    # 3. Admin user can access admin stats (200 OK)
+    res_admin = client.get("/api/v1/admin/stats", headers={"Authorization": f"Bearer {token_admin}"})
+    assert res_admin.status_code == 200
+    stats = res_admin.json()
+    assert "total_users" in stats
+    assert "active_users" in stats
+    assert "total_resumes" in stats
+    assert "total_jobs" in stats
+
+    # 4. Admin user can list users
+    res_admin_users = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {token_admin}"})
+    assert res_admin_users.status_code == 200
+    users_data = res_admin_users.json()
+    assert users_data["total"] >= 1
+    assert any(u["email"] == user_a["user"]["email"] for u in users_data["users"])
+
+    # 5. Admin user can toggle user active status
+    user_id = user_a["user"]["id"]
+    patch_res = client.patch(f"/api/v1/admin/users/{user_id}/status", json={
+        "is_active": False
+    }, headers={"Authorization": f"Bearer {token_admin}"})
+    assert patch_res.status_code == 200
+    assert patch_res.json()["is_active"] is False
+
+    # 6. Admin cannot deactivate own account (400 Bad Request)
+    self_patch = client.patch(f"/api/v1/admin/users/{admin_user['user'].id}/status", json={
+        "is_active": False
+    }, headers={"Authorization": f"Bearer {token_admin}"})
+    assert self_patch.status_code == 400
+
+    # 7. Re-activate User A
+    reactivate_res = client.patch(f"/api/v1/admin/users/{user_id}/status", json={
+        "is_active": True
+    }, headers={"Authorization": f"Bearer {token_admin}"})
+    assert reactivate_res.status_code == 200
+    assert reactivate_res.json()["is_active"] is True
+
