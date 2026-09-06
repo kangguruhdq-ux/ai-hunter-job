@@ -7,6 +7,7 @@ class JobMatch(TimeStampedBase):
 
     candidate_profile_id = Column(String(36), ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
     job_id = Column(String(36), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
 
     overall_score = Column(Integer, nullable=False)  # 0-100
     skills_score = Column(Integer, nullable=False)
@@ -23,3 +24,4 @@ class JobMatch(TimeStampedBase):
 
     candidate_profile = relationship("CandidateProfile", back_populates="matches")
     job = relationship("Job", back_populates="matches")
+    user = relationship("User", back_populates="job_matches")

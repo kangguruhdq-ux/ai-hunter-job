@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "JobHunter AI"
     API_V1_STR: str = "/api/v1"
 
+    # Security & Authentication Configuration
+    JWT_SECRET_KEY: str = "jobhunter-ai-secure-jwt-secret-key-2026-production-ready"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
     # AI Provider Configuration
     AI_PROVIDER: str = "mock"  # "gemini" or "mock"
     GEMINI_API_KEY: str = ""
