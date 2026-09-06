@@ -41,8 +41,11 @@ token.json
 *.db
 backend/uploads/*
 !backend/uploads/.gitkeep
+backend/app/uploads/*
+!backend/app/uploads/.gitkeep
 backend/data/*
 !backend/data/.gitkeep
+
 
 # Node / Next.js
 node_modules/

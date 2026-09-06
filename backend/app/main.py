@@ -62,4 +62,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "An internal server error occurred. Please try again later."}
     )
 
-# Note: API v1 router will be imported and mounted as routes are created
+from app.api.v1 import api_router
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
