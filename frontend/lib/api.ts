@@ -1,16 +1,21 @@
 // Typed API client for JobHunter AI backend with JWT Bearer Token Support
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const TOKEN_KEY = "jobhunter_token";
 
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token || token === "undefined" || token === "null" || token.trim() === "") {
+    return null;
+  }
+  return token;
 }
 
 export function setStoredToken(token: string | null): void {
   if (typeof window === "undefined") return;
-  if (token) {
+  if (token && token !== "undefined" && token !== "null" && token.trim() !== "") {
     localStorage.setItem(TOKEN_KEY, token);
   } else {
     localStorage.removeItem(TOKEN_KEY);
@@ -28,39 +33,49 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers,
-  });
+  // Use AbortController timeout to prevent hanging connections
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-  if (!res.ok) {
-    let errorMsg = `Request failed (${res.status})`;
-    try {
-      const errData = await res.json();
-      errorMsg = errData.detail || errorMsg;
-    } catch {
-      // Fallback
-    }
+  try {
+    const res = await fetch(`${API_BASE}${url}`, {
+      ...options,
+      headers,
+      signal: options?.signal || controller.signal,
+    });
+    clearTimeout(timeoutId);
 
-    // Auto-redirect to login on 401 if on protected route
-    if (res.status === 401 && typeof window !== "undefined") {
-      const path = window.location.pathname;
-      if (path !== "/login" && path !== "/register") {
-        setStoredToken(null);
-        window.location.href = "/login";
+    if (!res.ok) {
+      let errorMsg = `Request failed (${res.status})`;
+      try {
+        const errData = await res.json();
+        errorMsg = errData.detail || errorMsg;
+      } catch {
+        // Fallback
       }
+
+      if (res.status === 401 && typeof window !== "undefined") {
+        setStoredToken(null);
+      }
+
+      throw new Error(errorMsg);
     }
 
-    throw new Error(errorMsg);
-  }
+    // If 204 No Content
+    if (res.status === 204) {
+      return {} as T;
+    }
 
-  // If 204 No Content
-  if (res.status === 204) {
-    return {} as T;
+    return await res.json();
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      throw new Error("Koneksi ke backend timeout (6s). Pastikan server backend aktif.");
+    }
+    throw err;
   }
-
-  return res.json();
 }
+
 
 export const api = {
   // Authentication

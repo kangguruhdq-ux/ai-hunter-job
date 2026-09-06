@@ -43,6 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Safety watchdog timeout: never stay in loading state longer than 3 seconds
+    const safetyTimeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+
     try {
       setToken(existingToken);
       const profile = await api.getMe();
@@ -52,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setToken(null);
     } finally {
+      clearTimeout(safetyTimeout);
       setIsLoading(false);
     }
   }, []);

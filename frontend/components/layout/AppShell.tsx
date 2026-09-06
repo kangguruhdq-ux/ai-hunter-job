@@ -34,11 +34,23 @@ export function AppShell({ children }: AppShellProps) {
     if (isLoading) return;
 
     if (!isAuthenticated && !isAuthRoute) {
-      router.push("/login");
+      router.replace("/login");
     } else if (isAuthenticated && isAuthRoute) {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
   }, [isLoading, isAuthenticated, isAuthRoute, router]);
+
+  // Watchdog timer: If loading takes longer than 2.5s on protected route, force redirect to /login
+  useEffect(() => {
+    if (isLoading && !isAuthRoute) {
+      const watchdog = setTimeout(() => {
+        if (!isAuthenticated) {
+          router.replace("/login");
+        }
+      }, 2500);
+      return () => clearTimeout(watchdog);
+    }
+  }, [isLoading, isAuthRoute, isAuthenticated, router]);
 
   // Fetch dashboard overview stats when authenticated
   useEffect(() => {
@@ -63,7 +75,7 @@ export function AppShell({ children }: AppShellProps) {
   // Loading state for protected routes
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-400 gap-3">
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-400 gap-3 p-4">
         <div className="flex items-center gap-2 mb-2">
           <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
             <Sparkles className="h-5 w-5 animate-pulse" />
@@ -74,6 +86,12 @@ export function AppShell({ children }: AppShellProps) {
           <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
           <span>Memverifikasi sesi pengguna...</span>
         </div>
+        <Link
+          href="/login"
+          className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors mt-3 underline"
+        >
+          Menuju halaman login &rarr;
+        </Link>
       </div>
     );
   }
