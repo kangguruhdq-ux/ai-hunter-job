@@ -79,12 +79,13 @@ class AuthService:
     @staticmethod
     def seed_initial_admin(
         db: Session,
-        admin_email: str = "admin@jobhunter.ai",
-        admin_password: str = "AdminJobHunter2026!",
+        admin_email: Optional[str] = None,
+        admin_password: Optional[str] = None,
         admin_name: str = "JobHunter Administrator"
     ) -> Optional[User]:
         """Idempotently ensure at least one active administrator account exists."""
-        clean_email = admin_email.strip().lower()
+        clean_email = (admin_email or settings.INITIAL_ADMIN_EMAIL).strip().lower()
+        pwd = admin_password or settings.INITIAL_ADMIN_PASSWORD
         existing = db.query(User).filter(User.email == clean_email).first()
         if existing:
             # Ensure it is admin
@@ -92,7 +93,7 @@ class AuthService:
                 existing.role = "admin"
                 existing.is_active = True
                 if not existing.password_hash:
-                    existing.password_hash = hash_password(admin_password)
+                    existing.password_hash = hash_password(pwd)
                 db.commit()
                 db.refresh(existing)
             return existing
@@ -100,7 +101,7 @@ class AuthService:
         admin = User(
             email=clean_email,
             full_name=admin_name,
-            password_hash=hash_password(admin_password),
+            password_hash=hash_password(pwd),
             role="admin",
             is_active=True
         )

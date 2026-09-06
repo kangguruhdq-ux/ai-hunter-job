@@ -1,6 +1,7 @@
 import json
 import re
-from typing import Type, TypeVar, Optional, Any, Dict
+import time
+from typing import Type, TypeVar, Optional, Any, Dict, List, Tuple
 from pydantic import BaseModel, ValidationError
 from google import genai
 from google.genai import types
@@ -28,12 +29,21 @@ class GeminiAIError(Exception):
 
 class GeminiProvider(AIProvider):
     """
-    Production AI provider leveraging the official Google GenAI SDK.
-    Supports structured JSON generation, automatic schema validation,
-    anti-hallucination guardrails, and model fallback.
+    Enterprise-grade Gemini AI provider leveraging the Google GenAI SDK.
+    Features:
+    - Multi-model fallback chain (GEMINI_MODEL -> GEMINI_FALLBACK_MODELS)
+    - Error classification (429 quota, 404 missing model, 503 outage, 401 auth, 400 validation)
+    - Anti-loop protection (attempted_models set, bounded retries, no duplicate attempts)
+    - Telemetry tracking (requested_model, successful_model, fallback_used, latency)
+    - Clean user-facing error messages (no raw Python tracebacks)
     """
 
-    def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_name: Optional[str] = None,
+        fallback_models: Optional[List[str]] = None
+    ):
         self.api_key = settings.GEMINI_API_KEY if api_key is None else api_key
         if not self.api_key:
             raise GeminiAIError(
@@ -41,71 +51,186 @@ class GeminiProvider(AIProvider):
                 "or switch AI_PROVIDER=mock for local development."
             )
 
-        self.model_name = model_name or settings.GEMINI_MODEL
-        self.fallback_model = settings.GEMINI_FALLBACK_MODEL
+        self.primary_model = model_name or settings.GEMINI_MODEL
+        self.model_name = self.primary_model
+        self.fallback_models = fallback_models if fallback_models is not None else settings.gemini_fallback_models_list
+        self.fallback_model = self.fallback_models[0] if self.fallback_models else None
         self.client = genai.Client(api_key=self.api_key)
+
+        # Build deduplicated execution model chain
+        chain = [self.primary_model]
+        for fb in self.fallback_models:
+            if fb and fb not in chain:
+                chain.append(fb)
+        self.model_chain = chain
+
+        self.last_telemetry: Dict[str, Any] = {}
+        logger.info(f"GeminiProvider initialized. Model chain: {' -> '.join(self.model_chain)}")
 
     def _extract_json_from_text(self, text: str) -> Dict[str, Any]:
         """Extracts JSON object from text that may contain markdown codeblocks."""
         text = text.strip()
-        # Look for markdown code fence
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
         if match:
             text = match.group(1).strip()
         try:
             return json.loads(text)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             # Attempt basic cleanup for trailing commas
             cleaned = re.sub(r",\s*([\]}])", r"\1", text)
             try:
                 return json.loads(cleaned)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 raise GeminiAIError(f"Failed to parse Gemini response as JSON: {e}")
+
+    def _classify_error(self, err: Exception) -> Tuple[str, bool]:
+        """
+        Classifies an API or parsing exception.
+        Returns: (error_type, should_fallback)
+        """
+        err_str = str(err).lower()
+
+        # 429: Resource exhausted / rate limit / quota
+        if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str or "rate limit" in err_str:
+            return ("RESOURCE_EXHAUSTED", True)
+
+        # 404: Model not found / unavailable
+        if "404" in err_str or "not_found" in err_str or "model not found" in err_str or "is not found" in err_str:
+            return ("MODEL_NOT_FOUND", True)
+
+        # 401 / 403: Authentication or permission error -> DO NOT retry other models
+        if "401" in err_str or "403" in err_str or "unauthenticated" in err_str or "permission_denied" in err_str:
+            return ("AUTH_ERROR", False)
+
+        # 400: Bad request / Invalid argument -> DO NOT retry blindly
+        if "400" in err_str or "invalid_argument" in err_str:
+            return ("BAD_REQUEST", False)
+
+        # 500 / 502 / 503 / 504: Temporary server failure
+        if "500" in err_str or "502" in err_str or "503" in err_str or "504" in err_str or "unavailable" in err_str or "server error" in err_str:
+            return ("SERVER_ERROR", True)
+
+        # Output schema / validation error
+        if isinstance(err, (ValidationError, GeminiAIError)):
+            return ("VALIDATION_ERROR", True)
+
+        return ("PROVIDER_ERROR", True)
 
     async def _generate_and_validate(
         self,
         system_instruction: str,
         prompt: str,
-        schema_cls: Type[T],
-        model: Optional[str] = None,
-        attempt: int = 1
+        schema_cls: Type[T]
     ) -> T:
-        selected_model = model or self.model_name
-        try:
-            config = types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.2,  # Low temperature for factual accuracy
-                response_mime_type="application/json"
-            )
+        """
+        Executes model generation with multi-model fallback chain.
+        Guarantees:
+        - Bounded attempts (no infinite retry loop)
+        - Each model attempted at most once
+        - Fallback only on eligible errors (429, 404, 503, validation)
+        - Immediate clean termination on auth or bad request
+        - Telemetry recorded for AI activity observability
+        """
+        attempted_models: List[str] = []
+        last_error: Optional[Exception] = None
+        last_error_type: str = "UNKNOWN"
+        start_time = time.time()
 
-            response = self.client.models.generate_content(
-                model=selected_model,
-                contents=prompt,
-                config=config
-            )
+        for current_model in self.model_chain:
+            if current_model in attempted_models:
+                continue
 
-            raw_output = response.text or ""
-            data_dict = self._extract_json_from_text(raw_output)
-            validated_obj = schema_cls.model_validate(data_dict)
-            return validated_obj
+            attempted_models.append(current_model)
+            model_start = time.time()
 
-        except (GeminiAIError, ValidationError) as err:
-            logger.warning(f"Validation failed on attempt {attempt} for model {selected_model}: {err}")
-            # If primary model failed and fallback model is configured and different
-            if attempt == 1 and self.fallback_model and self.fallback_model != selected_model:
-                logger.info(f"Retrying with fallback model: {self.fallback_model}")
-                return await self._generate_and_validate(
-                    system_instruction, prompt, schema_cls, model=self.fallback_model, attempt=2
+            try:
+                config = types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.2,
+                    response_mime_type="application/json"
                 )
-            raise GeminiAIError(f"AI response validation error: {err}")
-        except Exception as err:
-            logger.error(f"Gemini API call failed for model {selected_model}: {err}", exc_info=True)
-            if attempt == 1 and self.fallback_model and self.fallback_model != selected_model:
-                logger.info(f"Retrying with fallback model: {self.fallback_model}")
-                return await self._generate_and_validate(
-                    system_instruction, prompt, schema_cls, model=self.fallback_model, attempt=2
+
+                logger.info(f"Invoking Gemini model: {current_model} (attempt {len(attempted_models)}/{len(self.model_chain)})")
+                response = self.client.models.generate_content(
+                    model=current_model,
+                    contents=prompt,
+                    config=config
                 )
-            raise GeminiAIError(f"Gemini API error: {err}")
+
+                raw_output = response.text or ""
+                data_dict = self._extract_json_from_text(raw_output)
+                validated_obj = schema_cls.model_validate(data_dict)
+
+                duration_ms = int((time.time() - start_time) * 1000)
+                is_fallback = current_model != self.primary_model
+
+                self.last_telemetry = {
+                    "requested_model": self.primary_model,
+                    "successful_model": current_model,
+                    "attempted_models": attempted_models,
+                    "fallback_used": is_fallback,
+                    "status": "completed",
+                    "duration_ms": duration_ms
+                }
+
+                if is_fallback:
+                    logger.warning(
+                        f"AI generation succeeded using fallback model '{current_model}' after {len(attempted_models)} attempts."
+                    )
+
+                return validated_obj
+
+            except Exception as err:
+                last_error = err
+                last_error_type, should_fallback = self._classify_error(err)
+                logger.warning(
+                    f"Gemini attempt failed on model '{current_model}' with error_type '{last_error_type}': {err}"
+                )
+
+                # If auth error or bad request, abort chain immediately
+                if not should_fallback:
+                    duration_ms = int((time.time() - start_time) * 1000)
+                    self.last_telemetry = {
+                        "requested_model": self.primary_model,
+                        "successful_model": None,
+                        "attempted_models": attempted_models,
+                        "fallback_used": False,
+                        "status": "failed",
+                        "error_type": last_error_type,
+                        "duration_ms": duration_ms
+                    }
+                    if last_error_type == "AUTH_ERROR":
+                        raise GeminiAIError("Autentikasi API key Google Gemini tidak valid atau tidak memiliki izin akses.")
+                    raise GeminiAIError(f"Permintaan AI tidak valid: {err}")
+
+        # If all models in the chain were exhausted
+        duration_ms = int((time.time() - start_time) * 1000)
+        self.last_telemetry = {
+            "requested_model": self.primary_model,
+            "successful_model": None,
+            "attempted_models": attempted_models,
+            "fallback_used": len(attempted_models) > 1,
+            "status": "failed",
+            "error_type": last_error_type,
+            "duration_ms": duration_ms
+        }
+
+        logger.error(
+            f"All configured Gemini models failed. Attempted models: {attempted_models}. Last error: {last_error}"
+        )
+
+        if last_error_type == "RESOURCE_EXHAUSTED":
+            raise GeminiAIError(
+                "Layanan AI sementara tidak tersedia karena semua model Gemini yang dikonfigurasi telah mencapai batas kuota (quota exhausted). Silakan coba beberapa saat lagi."
+            )
+        elif last_error_type == "MODEL_NOT_FOUND":
+            raise GeminiAIError(
+                "Model AI yang dikonfigurasi tidak tersedia pada endpoint API saat ini. Silakan periksa konfigurasi model Gemini Anda."
+            )
+        else:
+            raise GeminiAIError(
+                "Layanan AI sementara tidak tersedia. Sistem telah mencoba model fallback yang dikonfigurasi namun belum berhasil. Silakan coba kembali beberapa saat lagi."
+            )
 
     async def analyze_resume(self, raw_text: str) -> CandidateProfileData:
         prompt = RESUME_ANALYSIS_USER_PROMPT.format(resume_text=raw_text)
@@ -152,8 +277,6 @@ class GeminiProvider(AIProvider):
             prompt=prompt,
             schema_cls=TailoredResumeData
         )
-
-        # Anti-hallucination verification
         result.anti_hallucination_verified = self._verify_anti_hallucination(profile, result.tailored_markdown)
         return result
 
@@ -183,7 +306,6 @@ class GeminiProvider(AIProvider):
         Safety check: Ensures candidate's primary identity and companies mentioned
         actually correspond to the profile.
         """
-        # Basic verification: candidate's name should be present
         if profile.name.lower() not in generated_text.lower():
             logger.warning("Anti-hallucination warning: Candidate name missing from generated output.")
         return True

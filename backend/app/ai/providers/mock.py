@@ -12,9 +12,76 @@ class MockProvider(AIProvider):
     """
     High-fidelity deterministic AI provider for offline development, demo mode,
     and testing. Generates realistic technical data with zero 'Lorem ipsum'.
+    Supports multi-model fallback simulation and telemetry inspection.
     """
 
+    def __init__(self, simulation_mode: str = "normal"):
+        self.simulation_mode = simulation_mode
+        self.primary_model = "gemini-3.7-flash"
+        self.fallback_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+        self.last_telemetry = {
+            "requested_model": self.primary_model,
+            "successful_model": self.primary_model,
+            "attempted_models": [self.primary_model],
+            "fallback_used": False,
+            "status": "completed",
+            "duration_ms": 120
+        }
+
+    def _apply_simulation_telemetry(self):
+        if self.simulation_mode == "primary_429":
+            self.last_telemetry = {
+                "requested_model": self.primary_model,
+                "successful_model": self.fallback_models[0],
+                "attempted_models": [self.primary_model, self.fallback_models[0]],
+                "fallback_used": True,
+                "status": "completed",
+                "duration_ms": 320
+            }
+        elif self.simulation_mode == "primary_404":
+            self.last_telemetry = {
+                "requested_model": self.primary_model,
+                "successful_model": self.fallback_models[1],
+                "attempted_models": [self.primary_model, self.fallback_models[0], self.fallback_models[1]],
+                "fallback_used": True,
+                "status": "completed",
+                "duration_ms": 450
+            }
+        elif self.simulation_mode == "primary_503":
+            self.last_telemetry = {
+                "requested_model": self.primary_model,
+                "successful_model": self.fallback_models[0],
+                "attempted_models": [self.primary_model, self.fallback_models[0]],
+                "fallback_used": True,
+                "status": "completed",
+                "duration_ms": 280
+            }
+        elif self.simulation_mode == "all_fail":
+            from app.ai.providers.gemini import GeminiAIError
+            self.last_telemetry = {
+                "requested_model": self.primary_model,
+                "successful_model": None,
+                "attempted_models": [self.primary_model] + self.fallback_models,
+                "fallback_used": True,
+                "status": "failed",
+                "error_type": "RESOURCE_EXHAUSTED",
+                "duration_ms": 600
+            }
+            raise GeminiAIError(
+                "Layanan AI sementara tidak tersedia karena semua model Gemini yang dikonfigurasi telah mencapai batas kuota (quota exhausted). Silakan coba beberapa saat lagi."
+            )
+        else:
+            self.last_telemetry = {
+                "requested_model": self.primary_model,
+                "successful_model": self.primary_model,
+                "attempted_models": [self.primary_model],
+                "fallback_used": False,
+                "status": "completed",
+                "duration_ms": 120
+            }
+
     async def analyze_resume(self, raw_text: str) -> CandidateProfileData:
+        self._apply_simulation_telemetry()
         # Extract name or default
         lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
         name = "Alex Mercer"
@@ -112,6 +179,7 @@ class MockProvider(AIProvider):
         )
 
     async def analyze_job(self, raw_job_text: str) -> JobAnalysisData:
+        self._apply_simulation_telemetry()
         lines = [l.strip() for l in raw_job_text.splitlines() if l.strip()]
         title = "Senior Backend Engineer"
         company = "Stripe"
@@ -170,6 +238,7 @@ class MockProvider(AIProvider):
         profile: CandidateProfileData,
         job: JobAnalysisData
     ) -> MatchResultData:
+        self._apply_simulation_telemetry()
         # Deterministic explainable calculation
         candidate_skills_lower = {s.lower() for s in (profile.skills + profile.programming_languages + profile.frameworks + profile.tools)}
         req_lower = [s.lower() for s in job.required_skills]
@@ -280,6 +349,7 @@ class MockProvider(AIProvider):
         profile: CandidateProfileData,
         job: JobAnalysisData
     ) -> TailoredResumeData:
+        self._apply_simulation_telemetry()
         # Strict anti-hallucination: only reword bullet points and highlight actual skills
         skills_str = ", ".join(profile.skills)
         langs_str = ", ".join(profile.programming_languages)
@@ -356,6 +426,7 @@ Email: {profile.email} | Phone: {profile.phone} | Location: {profile.location}
         company: str,
         job_title: str
     ) -> CoverLetterData:
+        self._apply_simulation_telemetry()
         # Authentic, grounded letter
         key_skills = ", ".join(profile.skills[:4])
         top_exp = profile.experience[0] if profile.experience else None

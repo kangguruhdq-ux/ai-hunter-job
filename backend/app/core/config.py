@@ -29,7 +29,25 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "mock"  # "gemini" or "mock"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.7-flash"
-    GEMINI_FALLBACK_MODEL: str = "gemini-3.6-flash"
+    GEMINI_FALLBACK_MODELS: str = "gemini-2.5-flash,gemini-2.0-flash,gemini-1.5-flash"
+    GEMINI_FALLBACK_MODEL: str = "gemini-2.0-flash"
+
+    # Initial Administrator Provisioning
+    INITIAL_ADMIN_EMAIL: str = "admin@jobhunter.ai"
+    INITIAL_ADMIN_PASSWORD: str = "AdminJobHunter2026!"
+
+    @property
+    def gemini_fallback_models_list(self) -> List[str]:
+        raw = self.GEMINI_FALLBACK_MODELS or self.GEMINI_FALLBACK_MODEL
+        models = [m.strip() for m in raw.split(",") if m.strip()]
+        # Filter duplicates while preserving order
+        seen = set()
+        deduped = []
+        for m in models:
+            if m not in seen and m != self.GEMINI_MODEL:
+                seen.add(m)
+                deduped.append(m)
+        return deduped
 
     # Database Configuration
     DATABASE_URL: str = "sqlite:///./data/jobhunter.db"

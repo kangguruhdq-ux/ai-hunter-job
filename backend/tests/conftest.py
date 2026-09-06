@@ -29,7 +29,7 @@ from app.services.resume_service import ResumeService
 @pytest.fixture(autouse=True)
 def auto_authenticate_legacy_tests(request):
     """Automatically authenticate legacy tests that don't pass explicit Bearer tokens."""
-    if "test_auth" in request.module.__name__:
+    if "test_auth" in request.module.__name__ or "test_admin" in request.module.__name__:
         yield
         return
 
