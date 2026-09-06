@@ -53,3 +53,35 @@ class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = Field(None, min_length=2, max_length=255)
     is_active: Optional[bool] = None
     role: Optional[str] = None
+
+class AdminUserItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+    resumes_count: int = 0
+    applications_count: int = 0
+    created_at: Optional[datetime] = None
+
+class AdminUsersListResponse(BaseModel):
+    total: int
+    users: list[AdminUserItem]
+
+class AdminStatsResponse(BaseModel):
+    total_users: int
+    active_users: int
+    admin_users: int
+    total_resumes: int
+    total_jobs: int
+    total_applications: int
+    total_ai_activities: int
+    ai_provider: str
+    configured_model: str
+
+class AdminUserUpdateStatusRequest(BaseModel):
+    is_active: Optional[bool] = None
+    role: Optional[str] = Field(None, pattern=r"^(user|admin)$")
+
