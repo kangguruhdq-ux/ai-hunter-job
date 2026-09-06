@@ -14,8 +14,7 @@ from app.core.database import Base, engine, SessionLocal
 def setup_test_db():
     Base.metadata.create_all(bind=engine)
     yield
-    # Cleanup tables
-    Base.metadata.drop_all(bind=engine)
+
 
 @pytest.fixture
 def client():
