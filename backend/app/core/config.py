@@ -1,7 +1,18 @@
 import os
+from pathlib import Path
 from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_current_dir = Path(__file__).resolve().parent  # app/core
+_backend_dir = _current_dir.parent.parent       # backend
+_root_dir = _backend_dir.parent                # project root
+
+_env_files = [
+    str(_backend_dir / ".env"),
+    str(_root_dir / ".env"),
+    ".env",
+]
 
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
@@ -13,7 +24,7 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "mock"  # "gemini" or "mock"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.7-flash"
-    GEMINI_FALLBACK_MODEL: str = "gemini-2.5-flash"
+    GEMINI_FALLBACK_MODEL: str = "gemini-3.6-flash"
 
     # Database Configuration
     DATABASE_URL: str = "sqlite:///./data/jobhunter.db"
@@ -39,7 +50,7 @@ class Settings(BaseSettings):
         return v
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_files,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore"

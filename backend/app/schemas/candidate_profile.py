@@ -14,14 +14,14 @@ class ExperienceItem(BaseModel):
 
 class EducationItem(BaseModel):
     degree: str
-    institution: str
+    institution: Optional[str] = "Not specified"
     field_of_study: Optional[str] = None
     start_year: Optional[int] = None
     end_year: Optional[int] = None
 
 class ProjectItem(BaseModel):
     name: str
-    description: str
+    description: Optional[str] = ""
     tech_stack: List[str] = Field(default_factory=list)
     url: Optional[str] = None
 

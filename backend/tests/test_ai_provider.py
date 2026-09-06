@@ -72,3 +72,9 @@ def test_factory_fallback_to_mock():
     reset_ai_provider()
     provider = get_ai_provider()
     assert isinstance(provider, MockProvider)
+
+def test_gemini_provider_init():
+    provider = GeminiProvider(api_key="test_api_key_valid", model_name="gemini-3.7-flash")
+    assert provider.api_key == "test_api_key_valid"
+    assert provider.model_name == "gemini-3.7-flash"
+

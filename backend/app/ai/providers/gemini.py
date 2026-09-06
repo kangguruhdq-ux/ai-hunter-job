@@ -34,7 +34,7 @@ class GeminiProvider(AIProvider):
     """
 
     def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
-        self.api_key = api_key or settings.GEMINI_API_KEY
+        self.api_key = settings.GEMINI_API_KEY if api_key is None else api_key
         if not self.api_key:
             raise GeminiAIError(
                 "GEMINI_API_KEY is not configured. Please set the GEMINI_API_KEY environment variable "
