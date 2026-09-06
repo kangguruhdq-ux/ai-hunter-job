@@ -180,6 +180,8 @@ export const api = {
     // System Health & Settings
     getSystemHealth: () => fetchJson<any>("/admin/system-health"),
     getSettings: () => fetchJson<any>("/admin/settings"),
+    updateSettings: (data: any) =>
+      fetchJson<any>("/admin/settings", { method: "PATCH", body: JSON.stringify(data) }),
   },
 
   // Resume
@@ -301,112 +303,5 @@ export const api = {
     fetchJson<any>("/ai/evaluation"),
   runPipeline: (jobId: string) =>
     fetchJson<any>(`/ai/pipeline/${jobId}`, { method: "POST" }),
-
-  // Admin Command Center
-  admin: {
-    getStats: () => fetchJson<any>("/admin/stats"),
-    listUsers: (search?: string, role?: string, isActive?: boolean, skip = 0, limit = 50) => {
-      const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      if (role) params.append("role", role);
-      if (isActive !== undefined) params.append("is_active", String(isActive));
-      params.append("skip", String(skip));
-      params.append("limit", String(limit));
-      return fetchJson<{ total: number; users: any[] }>(`/admin/users?${params.toString()}`);
-    },
-    createUser: (data: { email: string; full_name: string; password: string; role?: string; is_active?: boolean }) =>
-      fetchJson<any>("/admin/users", { method: "POST", body: JSON.stringify(data) }),
-    getUser: (userId: string) => fetchJson<any>(`/admin/users/${userId}`),
-    updateUser: (userId: string, data: { full_name?: string; email?: string; password?: string; role?: string; is_active?: boolean }) =>
-      fetchJson<any>(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify(data) }),
-    deleteUser: (userId: string) => fetchJson<void>(`/admin/users/${userId}`, { method: "DELETE" }),
-    toggleUserStatus: (userId: string, isActive: boolean) =>
-      fetchJson<any>(`/admin/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ is_active: isActive }) }),
-    updateUserRole: (userId: string, role: string) =>
-      fetchJson<any>(`/admin/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
-
-    listResumes: (skip = 0, limit = 50) =>
-      fetchJson<{ total: number; resumes: any[] }>(`/admin/resumes?skip=${skip}&limit=${limit}`),
-    deleteResume: (resumeId: string) =>
-      fetchJson<void>(`/admin/resumes/${resumeId}`, { method: "DELETE" }),
-
-    listJobs: (search?: string, skip = 0, limit = 50) => {
-      const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      params.append("skip", String(skip));
-      params.append("limit", String(limit));
-      return fetchJson<{ total: number; jobs: any[] }>(`/admin/jobs?${params.toString()}`);
-    },
-    createJob: (data: any) =>
-      fetchJson<any>("/admin/jobs", { method: "POST", body: JSON.stringify(data) }),
-    getJob: (jobId: string) => fetchJson<any>(`/admin/jobs/${jobId}`),
-    updateJob: (jobId: string, data: any) =>
-      fetchJson<any>(`/admin/jobs/${jobId}`, { method: "PATCH", body: JSON.stringify(data) }),
-    deleteJob: (jobId: string) => fetchJson<void>(`/admin/jobs/${jobId}`, { method: "DELETE" }),
-
-    listApplications: (status?: string, skip = 0, limit = 50) => {
-      const params = new URLSearchParams();
-      if (status) params.append("status", status);
-      params.append("skip", String(skip));
-      params.append("limit", String(limit));
-      return fetchJson<{ total: number; applications: any[] }>(`/admin/applications?${params.toString()}`);
-    },
-    updateApplicationStatus: (appId: string, data: { status: string; notes?: string; interview_date?: string }) =>
-      fetchJson<any>(`/admin/applications/${appId}/status`, { method: "PATCH", body: JSON.stringify(data) }),
-    deleteApplication: (appId: string) =>
-      fetchJson<void>(`/admin/applications/${appId}`, { method: "DELETE" }),
-
-    listDocuments: (type?: string, skip = 0, limit = 50) => {
-      const params = new URLSearchParams();
-      if (type) params.append("type", type);
-      params.append("skip", String(skip));
-      params.append("limit", String(limit));
-      return fetchJson<{ total: number; documents: any[] }>(`/admin/documents?${params.toString()}`);
-    },
-    deleteDocument: (docId: string) =>
-      fetchJson<void>(`/admin/documents/${docId}`, { method: "DELETE" }),
-
-    listAIActivities: (activityType?: string, status?: string, skip = 0, limit = 50) => {
-      const params = new URLSearchParams();
-      if (activityType) params.append("activity_type", activityType);
-      if (status) params.append("status", status);
-      params.append("skip", String(skip));
-      params.append("limit", String(limit));
-      return fetchJson<{ total: number; activities: any[] }>(`/admin/ai-activities?${params.toString()}`);
-    },
-    getAIActivityStats: () =>
-      fetchJson<{
-        total_activities: number;
-        successful_activities: number;
-        failed_activities: number;
-        success_rate: number;
-        average_latency_ms: number;
-        fallback_used_count: number;
-        fallback_rate: number;
-        rate_limit_429_count: number;
-        model_distribution: Record<string, number>;
-        activity_type_distribution: Record<string, number>;
-      }>("/admin/ai-activities/stats"),
-
-    getSystemHealth: () =>
-      fetchJson<{
-        status: string;
-        service: string;
-        environment: string;
-        timestamp: string;
-        database: { status: string; engine: string; pool_size: number };
-        ai_provider: {
-          configured_provider: string;
-          primary_model: string;
-          fallback_models: string[];
-          fallback_count: number;
-          has_api_key: boolean;
-        };
-        auth: { token_expire_minutes: number; algorithm: string };
-      }>("/admin/system-health"),
-
-    getSettings: () => fetchJson<any>("/admin/settings"),
-    updateSettings: (data: any) =>
-      fetchJson<any>("/admin/settings", { method: "PATCH", body: JSON.stringify(data) }),
-  },
 };
+
