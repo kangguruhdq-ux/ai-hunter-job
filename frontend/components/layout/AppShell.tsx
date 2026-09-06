@@ -2,19 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { DesktopSidebar, MobileBottomNav } from "./Navbar";
 import { 
   Sparkles, 
-  Cpu, 
   FileUp, 
-  PlusCircle, 
-  KanbanSquare, 
-  ExternalLink,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  ShieldAlert,
+  Loader2,
+  User as UserIcon,
+  LogOut
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -22,15 +23,106 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAuthenticated, isAdmin, isLoading, logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
 
+  const isAuthRoute = pathname === "/login" || pathname === "/register";
+
+  // Handle route protection and redirections
   useEffect(() => {
-    // Attempt to load stats to display active provider & quick counts
-    api.getDashboardStats().then(setStats).catch(() => {});
-  }, [pathname]);
+    if (isLoading) return;
+
+    if (!isAuthenticated && !isAuthRoute) {
+      router.push("/login");
+    } else if (isAuthenticated && isAuthRoute) {
+      router.push("/dashboard");
+    }
+  }, [isLoading, isAuthenticated, isAuthRoute, router]);
+
+  // Fetch dashboard overview stats when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isAuthRoute) {
+      api.getDashboardStats().then(setStats).catch(() => {});
+    }
+  }, [isAuthenticated, isAuthRoute, pathname]);
+
+  // If viewing login or register page, render cleanly without the app shell
+  if (isAuthRoute) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-400 gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+          <p className="text-sm font-medium">Memuat JobHunter AI...</p>
+        </div>
+      );
+    }
+    return <div className="min-h-screen bg-[#09090b] text-[#f4f4f5]">{children}</div>;
+  }
+
+  // Loading state for protected routes
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-400 gap-3">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <Sparkles className="h-5 w-5 animate-pulse" />
+          </div>
+          <span className="font-semibold tracking-tight text-white text-lg">JobHunter AI</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+          <span>Memverifikasi sesi pengguna...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If unauthenticated on a protected route, wait for redirect
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-400 gap-3">
+        <Loader2 className="h-6 w-6 animate-spin text-emerald-400" />
+        <p className="text-sm">Mengarahkan ke halaman login...</p>
+      </div>
+    );
+  }
+
+  // Admin route access check
+  if (pathname.startsWith("/admin") && !isAdmin) {
+    return (
+      <div className="flex min-h-screen bg-[#09090b] text-[#f4f4f5]">
+        <DesktopSidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <main className="flex-1 flex items-center justify-center p-6">
+            <div className="max-w-md w-full p-8 rounded-2xl bg-[#121215] border border-red-500/20 text-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400">
+                <ShieldAlert className="h-7 w-7" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Akses Ditolak (403)</h2>
+                <p className="text-sm text-zinc-400 mt-1">
+                  Halaman Admin Command Center hanya dapat diakses oleh akun dengan peran <span className="text-purple-400 font-semibold font-mono">ADMIN</span>.
+                </p>
+              </div>
+              <div className="pt-2">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium transition-colors"
+                >
+                  Kembali ke Dashboard Pengguna
+                </Link>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   const getPageTitle = () => {
     if (pathname === "/dashboard") return "Dashboard";
+    if (pathname.startsWith("/admin")) return "Admin Command Center";
     if (pathname.startsWith("/resume")) return "Resume & Profile";
     if (pathname.startsWith("/jobs/")) return "Job Intelligence";
     if (pathname.startsWith("/jobs")) return "Job Discovery";
@@ -67,7 +159,7 @@ export function AppShell({ children }: AppShellProps) {
               </span>
               <span className="text-zinc-400">Provider:</span>
               <span className="font-mono text-emerald-400 font-medium">
-                {stats?.provider === "gemini" ? "Gemini 3.7 Flash" : "Local AI Provider"}
+                {stats?.provider === "gemini" ? "Gemini 3.7 Flash" : "Google Gemini"}
               </span>
             </div>
 
@@ -79,6 +171,19 @@ export function AppShell({ children }: AppShellProps) {
               <ShieldCheck className="h-3.5 w-3.5" />
               <span>Grounding Guard</span>
             </div>
+
+            {/* User Badge */}
+            {user && (
+              <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800 text-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-zinc-300 font-medium max-w-[120px] truncate">{user.full_name}</span>
+                {isAdmin && (
+                  <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono text-[9px]">
+                    ADMIN
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Quick Action Button */}
             <Link

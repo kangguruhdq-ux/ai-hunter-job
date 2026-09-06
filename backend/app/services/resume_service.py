@@ -13,7 +13,7 @@ from app.services.activity_service import ActivityService
 class ResumeService:
     @staticmethod
     def get_or_create_default_user(db: Session) -> User:
-        user = db.query(User).first()
+        user = db.query(User).filter(User.email == "candidate@jobhunter.ai").first()
         if not user:
             user = User(
                 email="candidate@jobhunter.ai",

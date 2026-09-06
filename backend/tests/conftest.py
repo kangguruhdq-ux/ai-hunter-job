@@ -35,6 +35,24 @@ def auto_authenticate_legacy_tests(request):
 
     with SessionLocal() as db:
         user = ResumeService.get_or_create_default_user(db)
+        from app.models.candidate_profile import CandidateProfile
+        profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == user.id).first()
+        if not profile:
+            from app.services.profile_service import ProfileService
+            ProfileService.update_candidate_profile(
+                db=db,
+                profile_data={
+                    "name": "Alex Mercer",
+                    "headline": "Senior Software Engineer",
+                    "summary": "Full stack engineer with Python, FastAPI, and React expertise.",
+                    "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "React", "SQLAlchemy"],
+                    "programming_languages": ["Python", "JavaScript"],
+                    "frameworks": ["FastAPI", "React"],
+                    "tools": ["Docker", "PostgreSQL", "Git"],
+                    "years_of_experience": 5.0
+                },
+                user_id=user.id
+            )
         app.dependency_overrides[get_current_user] = lambda: user
         app.dependency_overrides[get_current_active_user] = lambda: user
     try:
