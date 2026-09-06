@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "mock"  # "gemini" or "mock"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.7-flash"
-    GEMINI_FALLBACK_MODELS: str = "gemini-2.5-flash,gemini-2.0-flash,gemini-1.5-flash"
-    GEMINI_FALLBACK_MODEL: str = "gemini-2.0-flash"
+    GEMINI_FALLBACK_MODELS: str = "gemini-3.6-flash,gemini-3.5-flash,gemini-2.5-flash-lite"
+    GEMINI_FALLBACK_MODEL: str = "gemini-3.6-flash"
 
     # Initial Administrator Provisioning
     INITIAL_ADMIN_EMAIL: str = "admin@jobhunter.ai"
