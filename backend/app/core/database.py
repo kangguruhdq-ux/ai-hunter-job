@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from typing import Generator
 from app.core.config import settings
@@ -7,7 +7,10 @@ from app.core.config import settings
 # Configure connect_args based on DB dialect and ensure directory exists
 connect_args = {}
 if settings.DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+    connect_args = {
+        "check_same_thread": False,
+        "timeout": 30,  # 30-second busy timeout to prevent 'database is locked'
+    }
     db_path = settings.DATABASE_URL.replace("sqlite:///", "")
     if db_path and not db_path.startswith(":memory:"):
         db_dir = os.path.dirname(os.path.abspath(db_path))
@@ -17,8 +20,22 @@ if settings.DATABASE_URL.startswith("sqlite"):
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args=connect_args,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    pool_recycle=3600,
 )
+
+# Enable SQLite Write-Ahead Logging (WAL) and set busy handler for concurrency
+if settings.DATABASE_URL.startswith("sqlite"):
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
+            cursor.close()
+        except Exception:
+            pass
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -27,6 +44,9 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 

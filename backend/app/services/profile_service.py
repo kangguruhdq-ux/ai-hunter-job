@@ -104,12 +104,19 @@ class ProfileService:
             return profile
 
         except Exception as e:
-            ActivityService.complete_activity(
-                db=db,
-                activity_id=activity.id,
-                status="failed",
-                error=str(e)
-            )
+            try:
+                db.rollback()
+            except Exception:
+                pass
+            try:
+                ActivityService.complete_activity(
+                    db=db,
+                    activity_id=activity.id,
+                    status="failed",
+                    error=str(e)
+                )
+            except Exception:
+                pass
             logger.error(f"Failed to extract candidate profile: {e}", exc_info=True)
             raise
 

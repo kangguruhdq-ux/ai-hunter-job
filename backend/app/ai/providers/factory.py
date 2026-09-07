@@ -1,10 +1,11 @@
+from typing import Optional
 from app.core.config import settings
 from app.core.logging import logger
 from app.ai.providers.base import AIProvider
 from app.ai.providers.mock import MockProvider
 from app.ai.providers.gemini import GeminiProvider, GeminiAIError
 
-_provider_instance: AIProvider | None = None
+_provider_instance: Optional[AIProvider] = None
 
 def get_ai_provider() -> AIProvider:
     """

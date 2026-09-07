@@ -52,10 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(existingToken);
       const profile = await api.getMe();
       setUser(profile);
-    } catch {
-      setStoredToken(null);
-      setUser(null);
-      setToken(null);
+    } catch (err: any) {
+      const msg = (err?.message || "").toLowerCase();
+      if (msg.includes("401") || msg.includes("sesi tidak valid") || msg.includes("kedaluwarsa") || msg.includes("unauthorized")) {
+        setStoredToken(null);
+        setUser(null);
+        setToken(null);
+      }
     } finally {
       clearTimeout(safetyTimeout);
       setIsLoading(false);

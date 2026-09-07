@@ -22,20 +22,32 @@ export function setStoredToken(token: string | null): void {
   }
 }
 
-async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+async function fetchJson<T>(url: string, options?: RequestInit & { timeoutMs?: number }): Promise<T> {
   const token = getStoredToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options?.headers as Record<string, string>) || {}),
   };
 
-  if (token && !headers["Authorization"]) {
+  const isAuthEndpoint = url.startsWith("/auth/login") || url.startsWith("/auth/register");
+  if (token && !headers["Authorization"] && !isAuthEndpoint) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // Use AbortController timeout to prevent hanging connections
+  // Adaptive timeout: 60 seconds for heavy AI and resume operations, 15s for standard requests
+  const isAiOrResumeUrl = 
+    url.includes("/resume") || 
+    url.includes("/candidate/profile/extract") || 
+    url.includes("/candidate/resume/analyze") || 
+    url.includes("/match") || 
+    url.includes("/tailored-resume") || 
+    url.includes("/cover-letter") ||
+    url.includes("/pipeline");
+
+  const timeoutMs = options?.timeoutMs || (isAiOrResumeUrl ? 60000 : 15000);
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(`${API_BASE}${url}`, {
@@ -54,7 +66,8 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
         // Fallback
       }
 
-      if (res.status === 401 && typeof window !== "undefined") {
+      // Only invalidate token on 401 if it's NOT a login/register attempt
+      if (res.status === 401 && typeof window !== "undefined" && !isAuthEndpoint) {
         setStoredToken(null);
       }
 
@@ -70,7 +83,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   } catch (err: any) {
     clearTimeout(timeoutId);
     if (err.name === "AbortError") {
-      throw new Error("Koneksi ke backend timeout (6s). Pastikan server backend aktif.");
+      throw new Error(`Koneksi ke backend timeout (${timeoutMs / 1000} detik). Pastikan server backend aktif.`);
     }
     throw err;
   }
@@ -211,17 +224,30 @@ export const api = {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}/resume/upload`, {
-      method: "POST",
-      body: formData,
-      headers,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Failed to upload resume.");
+    try {
+      const res = await fetch(`${API_BASE}/resume/upload`, {
+        method: "POST",
+        body: formData,
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Gagal mengunggah resume.");
+      }
+      return await res.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        throw new Error("Proses unggah resume timeout (60 detik). Periksa koneksi jaringan Anda.");
+      }
+      throw err;
     }
-    return res.json();
   },
   getLatestResume: () => fetchJson<any>("/resume/latest"),
   listResumes: () => fetchJson<any[]>("/resume"),

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 import time
@@ -88,7 +89,14 @@ class GeminiProvider(AIProvider):
         Classifies an API or parsing exception.
         Returns: (error_type, should_fallback)
         """
+        if isinstance(err, (asyncio.TimeoutError, TimeoutError)):
+            return ("TIMEOUT", True)
+
         err_str = str(err).lower()
+
+        # Timeout
+        if "timeout" in err_str or "timed out" in err_str or "deadline_exceeded" in err_str:
+            return ("TIMEOUT", True)
 
         # 429: Resource exhausted / rate limit / quota
         if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str or "rate limit" in err_str:
@@ -127,9 +135,10 @@ class GeminiProvider(AIProvider):
         Guarantees:
         - Bounded attempts (no infinite retry loop)
         - Each model attempted at most once
-        - Fallback only on eligible errors (429, 404, 503, validation)
+        - Fallback only on eligible errors (429, 404, 503, validation, timeout)
         - Immediate clean termination on auth or bad request
         - Telemetry recorded for AI activity observability
+        - Non-blocking async execution (offloaded to thread to preserve FastAPI event loop)
         """
         attempted_models: List[str] = []
         last_error: Optional[Exception] = None
@@ -151,10 +160,16 @@ class GeminiProvider(AIProvider):
                 )
 
                 logger.info(f"Invoking Gemini model: {current_model} (attempt {len(attempted_models)}/{len(self.model_chain)})")
-                response = self.client.models.generate_content(
-                    model=current_model,
-                    contents=prompt,
-                    config=config
+                
+                # Offload synchronous blocking call to a thread so FastAPI event loop is never frozen
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.client.models.generate_content,
+                        model=current_model,
+                        contents=prompt,
+                        config=config
+                    ),
+                    timeout=35.0  # 35s per model attempt to prevent hanging requests
                 )
 
                 raw_output = response.text or ""
@@ -226,6 +241,10 @@ class GeminiProvider(AIProvider):
         elif last_error_type == "MODEL_NOT_FOUND":
             raise GeminiAIError(
                 "Model AI yang dikonfigurasi tidak tersedia pada endpoint API saat ini. Silakan periksa konfigurasi model Gemini Anda."
+            )
+        elif last_error_type == "TIMEOUT":
+            raise GeminiAIError(
+                "Layanan AI mengalami batas waktu (timeout). Permintaan memerlukan waktu lebih lama dari biasanya. Silakan coba kembali beberapa saat lagi."
             )
         else:
             raise GeminiAIError(
