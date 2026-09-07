@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Union
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, computed_field
 
 class ExperienceItem(BaseModel):
     company: str
@@ -17,6 +17,13 @@ class ExperienceItem(BaseModel):
 
     @model_validator(mode="after")
     def sync_role_and_title(self):
+        # Strict anti-hallucination: clean up generic placeholders like 'Role' or 'Unknown'
+        invalid_roles = {"role", "unknown role", "unknown", "n/a", "none", "null", "undefined"}
+        if self.role and self.role.strip().lower() in invalid_roles:
+            self.role = None
+        if self.title and self.title.strip().lower() in invalid_roles:
+            self.title = None
+
         # Sync role and title so both are accessible
         if self.role and not self.title:
             self.title = self.role
@@ -36,6 +43,18 @@ class EducationItem(BaseModel):
     end_year: Optional[int] = None
     gpa: Optional[Union[float, int, str]] = None
     details: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def clean_placeholders(self):
+        # Strip synthetic placeholders like 'School in Field', 'in Field', 'Field'
+        invalid_placeholders = {"field", "in field", "school in field", "unknown", "n/a", "none", "null"}
+        if self.field_of_study and self.field_of_study.strip().lower() in invalid_placeholders:
+            self.field_of_study = None
+        if self.degree and self.degree.strip().lower() in invalid_placeholders:
+            self.degree = None
+        if self.institution and self.institution.strip().lower() in invalid_placeholders:
+            self.institution = None
+        return self
 
 class OrganizationItem(BaseModel):
     name: str
@@ -72,12 +91,17 @@ class CandidateProfileData(BaseModel):
     @classmethod
     def sync_name_and_full_name(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            if "full_name" in data and ("name" not in data or data.get("name") == "Candidate"):
-                data["name"] = data["full_name"]
-            elif "name" in data and "full_name" not in data:
-                data["full_name"] = data["name"]
+            fn = data.get("full_name")
+            nm = data.get("name")
+            if fn and fn != "Candidate" and fn.strip() != "":
+                data["name"] = fn.strip()
+                data["full_name"] = fn.strip()
+            elif nm and nm != "Candidate" and nm.strip() != "":
+                data["name"] = nm.strip()
+                data["full_name"] = nm.strip()
         return data
 
+    @computed_field
     @property
     def full_name(self) -> str:
         return self.name

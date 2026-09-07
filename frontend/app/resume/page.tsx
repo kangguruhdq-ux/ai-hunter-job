@@ -51,7 +51,7 @@ export default function ResumePage() {
   const syncProfileData = (data: any) => {
     if (!data) return;
     setProfile(data);
-    setFullName(data.full_name || "");
+    setFullName(data.full_name || data.name || "");
     setEmail(data.email || "");
     setPhone(data.phone || "");
     setLocation(data.location || "");
@@ -448,12 +448,15 @@ export default function ResumePage() {
                 {experience.map((exp, idx) => {
                   const roleTitle = exp.role || exp.title;
                   const companyName = exp.company;
-                  const heading = roleTitle && companyName
+                  const isGenericRole = !roleTitle || ["role", "unknown", "unknown role", "n/a", "none"].includes(roleTitle.trim().toLowerCase());
+                  const isGenericCompany = !companyName || ["company", "unknown", "unknown company", "n/a", "none"].includes(companyName.trim().toLowerCase());
+
+                  const heading = !isGenericRole && !isGenericCompany
                     ? `${roleTitle} at ${companyName}`
-                    : roleTitle
-                    ? roleTitle
-                    : companyName
+                    : !isGenericCompany
                     ? `${companyName} (Pengalaman Kerja / PKL)`
+                    : !isGenericRole
+                    ? roleTitle
                     : "Pengalaman Kerja";
 
                   const periodText = exp.period || 
@@ -520,13 +523,17 @@ export default function ResumePage() {
               <div className="space-y-3">
                 {education.map((edu, idx) => {
                   const majorField = edu.field_of_study || edu.field;
-                  const degreeTitle = edu.degree && majorField
+                  const institutionName = edu.institution;
+                  const isGenericField = !majorField || ["field", "in field", "unknown", "n/a", "none"].includes(majorField.trim().toLowerCase());
+                  const isGenericDegree = !edu.degree || ["degree", "in field", "unknown", "n/a", "none"].includes(edu.degree.trim().toLowerCase());
+
+                  const degreeTitle = !isGenericDegree && !isGenericField
                     ? `${edu.degree} — ${majorField}`
-                    : edu.degree
+                    : !isGenericDegree
                     ? edu.degree
-                    : majorField
+                    : !isGenericField
                     ? majorField
-                    : edu.institution || "Pendidikan";
+                    : institutionName || "Pendidikan";
 
                   const periodText = edu.period ||
                     (edu.start_date && edu.end_date

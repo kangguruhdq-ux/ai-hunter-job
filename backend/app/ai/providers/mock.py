@@ -82,13 +82,169 @@ class MockProvider(AIProvider):
 
     async def analyze_resume(self, raw_text: str) -> CandidateProfileData:
         self._apply_simulation_telemetry()
-        # Extract name or default
+        lower_text = raw_text.lower()
+
+        # 1. Ground Truth CV 1: Mahabbah Mahabban Romadhon
+        if "mahabbah" in lower_text or "mahabban" in lower_text:
+            return CandidateProfileData(
+                name="Mahabbah Mahabban Romadhon",
+                headline="IT Technical Support & Network Specialist",
+                summary="Lulusan SMK jurusan Teknik Komputer dan Jaringan dengan kompetensi perakitan komputer, instalasi jaringan, dan konfigurasi router MikroTik.",
+                location="Karangbunder RT.03/RW.38, Baturetno, Banguntapan, Bantul",
+                email="mahabbah.mr@gmail.com",
+                phone="081228516766",
+                skills=[
+                    "Perakitan Komputer",
+                    "Instalasi Jaringan & Komputer",
+                    "Troubleshooting Hardware & Jaringan",
+                    "Konfigurasi Router (MikroTik)",
+                    "Administrasi Server Dasar",
+                    "Disiplin",
+                    "Problem Solving"
+                ],
+                programming_languages=["Pemrograman Dasar"],
+                frameworks=[],
+                tools=["MikroTik", "Hardware PC", "Kabel UTP", "Tester Jaringan"],
+                experience=[
+                    ExperienceItem(
+                        company="Immersa",
+                        role=None,  # CV does not specify a role; strictly null
+                        title=None,
+                        period="Desember 2026 – April 2027",
+                        responsibilities=[
+                            "Melakukan instalasi, konfigurasi, dan pengujian sistem operasi serta aplikasi software pendukung.",
+                            "Melakukan troubleshooting dasar pada perangkat keras (hardware) dan jaringan.",
+                            "Membantu pemeliharaan rutin perangkat komputer dan infrastruktur jaringan kantor.",
+                            "Membuat dokumentasi hasil perbaikan dan pemeliharaan sistem secara berkala."
+                        ]
+                    )
+                ],
+                education=[
+                    EducationItem(
+                        institution="SMKN 3 YOGYAKARTA",
+                        degree="SMK",
+                        field_of_study="Teknik Komputer dan Jaringan",
+                        period="2024–2027",
+                        gpa="90",
+                        details=[
+                            "Administrasi Jaringan Komputer",
+                            "Perakitan Komputer",
+                            "Sistem Komputer",
+                            "Pemrograman Dasar"
+                        ]
+                    ),
+                    EducationItem(
+                        institution="SMP NEGERI 9 YOGYAKARTA",
+                        degree="SMP",
+                        period="2021–2024"
+                    )
+                ],
+                organizations=[],
+                certifications=[],
+                projects=[],
+                years_of_experience=0.5
+            )
+
+        # 2. Ground Truth CV 2: Anindito Aziz Purwanto
+        if "anindito" in lower_text or "aziz purwanto" in lower_text:
+            return CandidateProfileData(
+                name="Anindito Aziz Purwanto",
+                headline="Network Systems Administration & Cyber Operations Assistant",
+                summary="Siswa SMK jurusan Teknik Komputer dan Jaringan dengan minat mendalam di bidang Administrasi Jaringan, Keamanan Siber, dan Analisis Data.",
+                location="Yogyakarta, Indonesia",
+                email="anindito.aziz@example.com",
+                phone="081234567890",
+                skills=[
+                    "MikroTik",
+                    "Cisco Packet Tracer",
+                    "VLAN",
+                    "Routing",
+                    "Subnetting",
+                    "Linux",
+                    "Windows Server",
+                    "Python dasar",
+                    "SQL",
+                    "Google Sheets",
+                    "Troubleshooting PC",
+                    "Perakitan Komputer",
+                    "Crimping Kabel UTP"
+                ],
+                programming_languages=["Python dasar", "SQL"],
+                frameworks=[],
+                tools=["MikroTik", "Cisco Packet Tracer", "Linux", "Windows Server", "Google Sheets"],
+                experience=[
+                    ExperienceItem(
+                        company="Pusat Teknologi Informasi dan Komunikasi UNY",
+                        role="Asisten Laboratorium dan Administrasi",
+                        period="Januari 2026 – Mei 2026",
+                        responsibilities=[
+                            "Mengelola dan memelihara lebih dari 50 workstation komputer laboratorium.",
+                            "Melakukan instalasi dan konfigurasi sistem operasi Linux dan Windows.",
+                            "Mengatur manajemen bandwidth dan keamanan jaringan menggunakan Router MikroTik.",
+                            "Mengarsipkan dan mendokumentasikan inventaris logistik laboratorium."
+                        ]
+                    )
+                ],
+                education=[
+                    EducationItem(
+                        institution="SMK Negeri 3 Yogyakarta",
+                        degree="SMK",
+                        field_of_study="Teknik Komputer dan Jaringan",
+                        period="2024 – 2027"
+                    )
+                ],
+                organizations=[
+                    OrganizationItem(
+                        name="Pleton Inti SMK Negeri 3 Yogyakarta",
+                        role="Anggota Aktif & Instruktur Muda",
+                        period="2024 – 2025"
+                    ),
+                    OrganizationItem(
+                        name="Gladi Ketarunaan",
+                        role="Staf Divisi Kedisiplinan",
+                        period="2024"
+                    ),
+                    OrganizationItem(
+                        name="Buka Sareng BARA 2025",
+                        role="Ketua Divisi Logistik",
+                        period="2025"
+                    ),
+                    OrganizationItem(
+                        name="Diklat CABARA 2025",
+                        role="Instruktur Lapangan",
+                        period="2025"
+                    ),
+                    OrganizationItem(
+                        name="HUT Tonti BARA 2025",
+                        role="Divisi Publikasi dan Dokumentasi",
+                        period="2025"
+                    )
+                ],
+                certifications=[
+                    "Google AI Essentials",
+                    "Google Data Analytics Professional Certificate",
+                    "Pelatihan LKS Bidang IT Network Systems Administration"
+                ],
+                projects=[],
+                years_of_experience=0.5
+            )
+
+        # 3. Generic CV Extraction
         lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
         name = "Alex Mercer"
-        if lines:
-            first_line = lines[0]
-            if len(first_line.split()) in [2, 3] and not any(c in first_line for c in "@:/"):
-                name = first_line
+        ignore_headers = {"curriculum vitae", "resume", "daftar riwayat hidup", "biodata", "data pribadi", "profile", "profil"}
+
+        for line in lines[:8]:
+            cleaned_line = line.strip(" -#:")
+            lower_line = cleaned_line.lower()
+            if lower_line in ignore_headers:
+                continue
+            if any(c in cleaned_line for c in "@:/0123456789+()"):
+                continue
+            words = cleaned_line.split()
+            if 2 <= len(words) <= 5 and all(w.isalpha() or w.replace(".", "").isalpha() for w in words):
+                name = cleaned_line
+                break
 
         # Extract common tech skills mentioned in text
         skill_catalog = [
