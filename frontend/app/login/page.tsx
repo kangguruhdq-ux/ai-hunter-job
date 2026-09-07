@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
+import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, ShieldCheck, UserCheck } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,12 +17,29 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load remembered email on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedEmail = localStorage.getItem("jobhunter_remember_email");
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    }
+  }, []);
+
   // If already authenticated, redirect to dashboard
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       router.push("/dashboard");
     }
   }, [isAuthenticated, isLoading, router]);
+
+  const fillCredentials = (demoEmail: string, demoPass: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +48,14 @@ export default function LoginPage() {
     if (!email.trim() || !password) {
       setError("Mohon masukkan email dan kata sandi Anda.");
       return;
+    }
+
+    if (typeof window !== "undefined") {
+      if (rememberMe) {
+        localStorage.setItem("jobhunter_remember_email", email.trim());
+      } else {
+        localStorage.removeItem("jobhunter_remember_email");
+      }
     }
 
     setSubmitting(true);
@@ -168,6 +193,53 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Quick Demo Accounts Helper */}
+          <div className="mt-6 pt-5 border-t border-zinc-800/80">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
+                Akun Demo & Pengujian
+              </span>
+              <span className="text-[10px] text-zinc-500">Klik untuk isi otomatis</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => fillCredentials("admin@jobhunter.ai", "AdminJobHunter2026!")}
+                className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900/90 hover:bg-zinc-800/80 border border-zinc-800 hover:border-purple-500/40 text-left transition-all group"
+              >
+                <div className="w-6 h-6 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform flex-shrink-0">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-zinc-200 group-hover:text-purple-300 transition-colors truncate">
+                    Administrator
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-mono truncate">
+                    admin@jobhunter.ai
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillCredentials("candidate@jobhunter.ai", "CandidateJobHunter2026!")}
+                className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900/90 hover:bg-zinc-800/80 border border-zinc-800 hover:border-emerald-500/40 text-left transition-all group"
+              >
+                <div className="w-6 h-6 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform flex-shrink-0">
+                  <UserCheck className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-zinc-200 group-hover:text-emerald-300 transition-colors truncate">
+                    Kandidat Demo
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-mono truncate">
+                    candidate@jobhunter.ai
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
 
           {/* Footer Register Link */}
           <div className="mt-6 pt-5 border-t border-zinc-800/80 text-center text-xs text-zinc-400">

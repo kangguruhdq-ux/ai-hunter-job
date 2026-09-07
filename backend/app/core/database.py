@@ -87,12 +87,13 @@ def init_db():
             except Exception:
                 pass
 
-    # Ensure default admin account exists
+    # Ensure default admin and candidate accounts exist
     try:
         from app.services.auth_service import AuthService
         with SessionLocal() as db:
-            AuthService.seed_initial_admin(db)
+            AuthService.seed_initial_users(db)
     except Exception:
         pass
+
 
 

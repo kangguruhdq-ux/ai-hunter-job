@@ -104,6 +104,12 @@ class ProfileService:
             return profile
 
         except Exception as e:
+            ActivityService.complete_activity(
+                db=db,
+                activity_id=activity.id,
+                status="failed",
+                error=str(e)
+            )
             try:
                 db.rollback()
             except Exception:

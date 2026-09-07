@@ -28,21 +28,23 @@ export function AppShell({ children }: AppShellProps) {
   const [stats, setStats] = useState<any>(null);
 
   const isAuthRoute = pathname === "/login" || pathname === "/register";
+  const isLandingPage = pathname === "/";
+  const isPublicRoute = isLandingPage || isAuthRoute;
 
   // Handle route protection and redirections
   useEffect(() => {
     if (isLoading) return;
 
-    if (!isAuthenticated && !isAuthRoute) {
+    if (!isAuthenticated && !isPublicRoute) {
       router.replace("/login");
     } else if (isAuthenticated && isAuthRoute) {
       router.replace("/dashboard");
     }
-  }, [isLoading, isAuthenticated, isAuthRoute, router]);
+  }, [isLoading, isAuthenticated, isPublicRoute, isAuthRoute, router]);
 
   // Watchdog timer: If loading takes longer than 2.5s on protected route, force redirect to /login
   useEffect(() => {
-    if (isLoading && !isAuthRoute) {
+    if (isLoading && !isPublicRoute) {
       const watchdog = setTimeout(() => {
         if (!isAuthenticated) {
           router.replace("/login");
@@ -50,18 +52,18 @@ export function AppShell({ children }: AppShellProps) {
       }, 2500);
       return () => clearTimeout(watchdog);
     }
-  }, [isLoading, isAuthRoute, isAuthenticated, router]);
+  }, [isLoading, isPublicRoute, isAuthenticated, router]);
 
   // Fetch dashboard overview stats when authenticated
   useEffect(() => {
-    if (isAuthenticated && !isAuthRoute) {
+    if (isAuthenticated && !isPublicRoute) {
       api.getDashboardStats().then(setStats).catch(() => {});
     }
-  }, [isAuthenticated, isAuthRoute, pathname]);
+  }, [isAuthenticated, isPublicRoute, pathname]);
 
-  // If viewing login or register page, render cleanly without the app shell
-  if (isAuthRoute) {
-    if (isLoading) {
+  // If viewing landing page or auth routes, render cleanly without dashboard sidebar
+  if (isPublicRoute) {
+    if (isLoading && isAuthRoute) {
       return (
         <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center text-zinc-400 gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />

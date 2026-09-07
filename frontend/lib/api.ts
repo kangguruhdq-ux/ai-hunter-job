@@ -61,7 +61,17 @@ async function fetchJson<T>(url: string, options?: RequestInit & { timeoutMs?: n
       let errorMsg = `Request failed (${res.status})`;
       try {
         const errData = await res.json();
-        errorMsg = errData.detail || errorMsg;
+        if (typeof errData.detail === "string") {
+          errorMsg = errData.detail;
+        } else if (Array.isArray(errData.detail)) {
+          errorMsg = errData.detail
+            .map((item: any) => item.msg || JSON.stringify(item))
+            .join(", ");
+        } else if (errData.detail) {
+          errorMsg = JSON.stringify(errData.detail);
+        } else if (errData.message) {
+          errorMsg = errData.message;
+        }
       } catch {
         // Fallback
       }

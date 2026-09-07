@@ -109,3 +109,45 @@ class AuthService:
         db.commit()
         db.refresh(admin)
         return admin
+
+    @staticmethod
+    def seed_initial_candidate(
+        db: Session,
+        candidate_email: str = "candidate@jobhunter.ai",
+        candidate_password: str = "CandidateJobHunter2026!",
+        candidate_name: str = "Alex Mercer"
+    ) -> Optional[User]:
+        """Idempotently ensure default demo candidate account exists and has a valid password."""
+        clean_email = candidate_email.strip().lower()
+        existing = db.query(User).filter(User.email == clean_email).first()
+        if existing:
+            needs_commit = False
+            if not existing.password_hash:
+                existing.password_hash = hash_password(candidate_password)
+                needs_commit = True
+            if not existing.is_active:
+                existing.is_active = True
+                needs_commit = True
+            if needs_commit:
+                db.commit()
+                db.refresh(existing)
+            return existing
+
+        candidate = User(
+            email=clean_email,
+            full_name=candidate_name,
+            password_hash=hash_password(candidate_password),
+            role="user",
+            is_active=True
+        )
+        db.add(candidate)
+        db.commit()
+        db.refresh(candidate)
+        return candidate
+
+    @classmethod
+    def seed_initial_users(cls, db: Session):
+        """Seed both initial admin and demo candidate accounts."""
+        cls.seed_initial_admin(db)
+        cls.seed_initial_candidate(db)
+

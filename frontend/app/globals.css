@@ -57,12 +57,29 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* Glassmorphism Panel */
+/* Glassmorphism Panels & Cards */
 .glass-panel {
   background: rgba(18, 18, 22, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: linear-gradient(135deg, rgba(24, 24, 28, 0.8) 0%, rgba(15, 15, 18, 0.9) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-card-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6), 0 0 20px -4px rgba(16, 185, 129, 0.15);
 }
 
 /* Card hover transitions & UI polish */
@@ -82,7 +99,7 @@
 @keyframes fadeInScale {
   from {
     opacity: 0;
-    transform: scale(0.98);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
@@ -93,7 +110,18 @@
 @keyframes slideUpFade {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
   }
   to {
     opacity: 1;
@@ -104,23 +132,101 @@
 @keyframes pulseSubtle {
   0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.75;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes floatSoft {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes shimmerEffect {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    border-color: rgba(16, 185, 129, 0.25);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
   }
 }
 
 .animate-fade-in-scale {
-  animation: fadeInScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInScale 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-slide-up {
-  animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-pulse-subtle {
   animation: pulseSubtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+.animate-float {
+  animation: floatSoft 3s ease-in-out infinite;
+}
+
+.animate-border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerEffect 2s infinite;
+}
+
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradientShift 6s ease infinite;
+}
+
+/* Staggered animation delays */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
 
 /* Accessibility: Respect Reduced Motion Preferences */
 @media (prefers-reduced-motion: reduce) {
@@ -133,7 +239,9 @@
     scroll-behavior: auto !important;
   }
 
-  .card-hover:hover {
+  .card-hover:hover,
+  .glass-card-hover:hover,
+  .animate-float {
     transform: none !important;
   }
 }

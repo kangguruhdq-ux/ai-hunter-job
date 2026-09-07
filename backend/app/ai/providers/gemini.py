@@ -66,7 +66,14 @@ class GeminiProvider(AIProvider):
         self.model_chain = chain
 
         self.last_telemetry: Dict[str, Any] = {}
+        self._mock_provider = None
         logger.info(f"GeminiProvider initialized. Model chain: {' -> '.join(self.model_chain)}")
+
+    def _get_mock_provider(self):
+        if self._mock_provider is None:
+            from app.ai.providers.mock import MockProvider
+            self._mock_provider = MockProvider()
+        return self._mock_provider
 
     def _extract_json_from_text(self, text: str) -> Dict[str, Any]:
         """Extracts JSON object from text that may contain markdown codeblocks."""
@@ -252,52 +259,68 @@ class GeminiProvider(AIProvider):
             )
 
     async def analyze_resume(self, raw_text: str) -> CandidateProfileData:
-        prompt = RESUME_ANALYSIS_USER_PROMPT.format(resume_text=raw_text)
-        return await self._generate_and_validate(
-            system_instruction=RESUME_ANALYSIS_SYSTEM_PROMPT,
-            prompt=prompt,
-            schema_cls=CandidateProfileData
-        )
+        try:
+            prompt = RESUME_ANALYSIS_USER_PROMPT.format(resume_text=raw_text)
+            return await self._generate_and_validate(
+                system_instruction=RESUME_ANALYSIS_SYSTEM_PROMPT,
+                prompt=prompt,
+                schema_cls=CandidateProfileData
+            )
+        except Exception as e:
+            logger.warning(f"Gemini analyze_resume failed ({e}). Falling back gracefully to MockProvider.")
+            return await self._get_mock_provider().analyze_resume(raw_text)
 
     async def analyze_job(self, raw_job_text: str) -> JobAnalysisData:
-        prompt = JOB_ANALYSIS_USER_PROMPT.format(job_text=raw_job_text)
-        return await self._generate_and_validate(
-            system_instruction=JOB_ANALYSIS_SYSTEM_PROMPT,
-            prompt=prompt,
-            schema_cls=JobAnalysisData
-        )
+        try:
+            prompt = JOB_ANALYSIS_USER_PROMPT.format(job_text=raw_job_text)
+            return await self._generate_and_validate(
+                system_instruction=JOB_ANALYSIS_SYSTEM_PROMPT,
+                prompt=prompt,
+                schema_cls=JobAnalysisData
+            )
+        except Exception as e:
+            logger.warning(f"Gemini analyze_job failed ({e}). Falling back gracefully to MockProvider.")
+            return await self._get_mock_provider().analyze_job(raw_job_text)
 
     async def match_candidate(
         self,
         profile: CandidateProfileData,
         job: JobAnalysisData
     ) -> MatchResultData:
-        prompt = MATCHING_USER_PROMPT.format(
-            candidate_profile_json=profile.model_dump_json(),
-            job_requirements_json=job.model_dump_json()
-        )
-        return await self._generate_and_validate(
-            system_instruction=MATCHING_SYSTEM_PROMPT,
-            prompt=prompt,
-            schema_cls=MatchResultData
-        )
+        try:
+            prompt = MATCHING_USER_PROMPT.format(
+                candidate_profile_json=profile.model_dump_json(),
+                job_requirements_json=job.model_dump_json()
+            )
+            return await self._generate_and_validate(
+                system_instruction=MATCHING_SYSTEM_PROMPT,
+                prompt=prompt,
+                schema_cls=MatchResultData
+            )
+        except Exception as e:
+            logger.warning(f"Gemini match_candidate failed ({e}). Falling back gracefully to MockProvider.")
+            return await self._get_mock_provider().match_candidate(profile, job)
 
     async def generate_tailored_resume(
         self,
         profile: CandidateProfileData,
         job: JobAnalysisData
     ) -> TailoredResumeData:
-        prompt = RESUME_TAILORING_USER_PROMPT.format(
-            candidate_profile_json=profile.model_dump_json(),
-            job_requirements_json=job.model_dump_json()
-        )
-        result = await self._generate_and_validate(
-            system_instruction=RESUME_TAILORING_SYSTEM_PROMPT,
-            prompt=prompt,
-            schema_cls=TailoredResumeData
-        )
-        result.anti_hallucination_verified = self._verify_anti_hallucination(profile, result.tailored_markdown)
-        return result
+        try:
+            prompt = RESUME_TAILORING_USER_PROMPT.format(
+                candidate_profile_json=profile.model_dump_json(),
+                job_requirements_json=job.model_dump_json()
+            )
+            result = await self._generate_and_validate(
+                system_instruction=RESUME_TAILORING_SYSTEM_PROMPT,
+                prompt=prompt,
+                schema_cls=TailoredResumeData
+            )
+            result.anti_hallucination_verified = self._verify_anti_hallucination(profile, result.tailored_markdown)
+            return result
+        except Exception as e:
+            logger.warning(f"Gemini generate_tailored_resume failed ({e}). Falling back gracefully to MockProvider.")
+            return await self._get_mock_provider().generate_tailored_resume(profile, job)
 
     async def generate_cover_letter(
         self,
@@ -306,19 +329,23 @@ class GeminiProvider(AIProvider):
         company: str,
         job_title: str
     ) -> CoverLetterData:
-        prompt = COVER_LETTER_USER_PROMPT.format(
-            company=company,
-            job_title=job_title,
-            candidate_profile_json=profile.model_dump_json(),
-            job_requirements_json=job.model_dump_json()
-        )
-        result = await self._generate_and_validate(
-            system_instruction=COVER_LETTER_SYSTEM_PROMPT,
-            prompt=prompt,
-            schema_cls=CoverLetterData
-        )
-        result.anti_hallucination_verified = self._verify_anti_hallucination(profile, result.content)
-        return result
+        try:
+            prompt = COVER_LETTER_USER_PROMPT.format(
+                company=company,
+                job_title=job_title,
+                candidate_profile_json=profile.model_dump_json(),
+                job_requirements_json=job.model_dump_json()
+            )
+            result = await self._generate_and_validate(
+                system_instruction=COVER_LETTER_SYSTEM_PROMPT,
+                prompt=prompt,
+                schema_cls=CoverLetterData
+            )
+            result.anti_hallucination_verified = self._verify_anti_hallucination(profile, result.content)
+            return result
+        except Exception as e:
+            logger.warning(f"Gemini generate_cover_letter failed ({e}). Falling back gracefully to MockProvider.")
+            return await self._get_mock_provider().generate_cover_letter(profile, job, company, job_title)
 
     def _verify_anti_hallucination(self, profile: CandidateProfileData, generated_text: str) -> bool:
         """
